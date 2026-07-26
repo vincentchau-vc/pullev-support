@@ -4,6 +4,26 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PullEV · Shared Pool</title>
+  <meta name="description" content="PullEV shared blind pool preview. Open in the PullEV app to restore the same pool." />
+  <!--
+    Link-preview note:
+    Messenger crawlers (iMessage / WhatsApp / Facebook) only read static HTML meta tags.
+    Client JS cannot set per-pool og:image for those previews. This page ships a default
+    PullEV brand OG image. True per-pool card thumbnails in share previews need SSR or
+    an edge function later (decode payload server-side → emit og:image).
+  -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PullEV" />
+  <meta property="og:title" content="PullEV · Shared Pool" />
+  <meta property="og:description" content="分享嘅盲抽池 — 喺 PullEV App 開啟即可還原。" />
+  <meta property="og:image" content="https://pullev-support.vercel.app/og-share.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="PullEV shared blind pool" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PullEV · Shared Pool" />
+  <meta name="twitter:description" content="分享嘅盲抽池 — 喺 PullEV App 開啟即可還原。" />
+  <meta name="twitter:image" content="https://pullev-support.vercel.app/og-share.jpg" />
   <style>
     :root {
       --bg: #0f1419;
@@ -37,6 +57,23 @@
     .value { font-weight: 600; }
     ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
     li { margin: 0.25rem 0; font-size: 0.95rem; }
+    .art-strip {
+      display: flex;
+      gap: 0.55rem;
+      overflow-x: auto;
+      padding: 0.15rem 0 0.65rem;
+      margin: 0 0 0.35rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .art-strip img {
+      width: 72px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #10161f;
+      flex: 0 0 auto;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    }
     .cta {
       display: block;
       text-align: center;
@@ -66,6 +103,7 @@
   </main>
   <script>
     // Mirror of iOS PoolShareCodec: base64url(zlib(JSON)). zlib via DecompressionStream when available.
+    // Prize art field: optional `i` (https image URL from TCGdex / SNKRDUNK).
     function base64UrlToBytes(token) {
       let b64 = token.replace(/-/g, "+").replace(/_/g, "/");
       const pad = b64.length % 4;
@@ -122,9 +160,52 @@
         .replace(/"/g, "&quot;");
     }
 
+    function isHttpUrl(s) {
+      return typeof s === "string" && /^https?:\/\//i.test(s.trim());
+    }
+
+    function artStripHtml(prizes) {
+      const urls = prizes
+        .map((p) => (p && isHttpUrl(p.i) ? p.i.trim() : null))
+        .filter(Boolean)
+        .slice(0, 6);
+      if (!urls.length) return "";
+      const imgs = urls
+        .map(
+          (u) =>
+            `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />`
+        )
+        .join("");
+      return `<div class="art-strip" aria-label="Prize card art">${imgs}</div>`;
+    }
+
+    function setDocumentMeta(payload) {
+      const prizes = Array.isArray(payload.p) ? payload.p : [];
+      const firstName = prizes[0] && prizes[0].n ? String(prizes[0].n) : null;
+      const title = firstName
+        ? `PullEV · ${firstName}${prizes.length > 1 ? ` +${prizes.length - 1}` : ""}`
+        : "PullEV · Shared Pool";
+      const desc = `剩餘 ${payload.n ?? "?"} 包 · 每抽 HK$${payload.c ?? "?"} · ${prizes.length} 大獎`;
+      document.title = title;
+      // Helps browser tab / in-app browsers; crawlers already read static OG above.
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogTitle) ogTitle.setAttribute("content", title);
+      if (ogDesc) ogDesc.setAttribute("content", desc);
+      // Prefer first card art when present (for browsers that re-read meta after paint — not crawlers).
+      const firstArt = prizes.map((p) => p && p.i).find(isHttpUrl);
+      if (firstArt) {
+        const ogImg = document.querySelector('meta[property="og:image"]');
+        const twImg = document.querySelector('meta[name="twitter:image"]');
+        if (ogImg) ogImg.setAttribute("content", firstArt.trim());
+        if (twImg) twImg.setAttribute("content", firstArt.trim());
+      }
+    }
+
     function render(payload, token) {
       const prizes = Array.isArray(payload.p) ? payload.p : [];
       const floor = payload.f || "0";
+      setDocumentMeta(payload);
       const list = prizes
         .slice(0, 12)
         .map((p) => {
@@ -137,6 +218,7 @@
         .join("");
       const more = prizes.length > 12 ? `<li>… +${prizes.length - 12}</li>` : "";
       document.getElementById("content").innerHTML = `
+        ${artStripHtml(prizes)}
         <div class="row"><span class="label">剩餘包數</span><span class="value">${esc(payload.n ?? "?")}</span></div>
         <div class="row"><span class="label">每抽（HKD）</span><span class="value">${esc(payload.c ?? "?")}</span></div>
         <div class="row"><span class="label">墊卡保底（HKD）</span><span class="value">${esc(floor)}</span></div>
