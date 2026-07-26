@@ -102,7 +102,9 @@
     <p class="hint"><a class="secondary" href="../">支援主頁</a></p>
   </main>
   <script>
-    // Mirror of iOS PoolShareCodec: base64url(zlib(JSON)). zlib via DecompressionStream when available.
+    // Mirror of iOS PoolShareCodec: base64url(COMPRESSION_ZLIB(JSON)).
+    // Apple Compression.COMPRESSION_ZLIB emits raw DEFLATE (RFC 1951), NOT zlib-wrapped (RFC 1950).
+    // Browser mapping: "deflate-raw" = RFC 1951, "deflate" = RFC 1950. Try both + uncompressed JSON.
     // Prize art field: optional `i` (https image URL from TCGdex / SNKRDUNK).
     function base64UrlToBytes(token) {
       let b64 = token.replace(/-/g, "+").replace(/_/g, "/");
@@ -114,23 +116,37 @@
       return out;
     }
 
-    async function inflateZlib(bytes) {
-      if (typeof DecompressionStream === "undefined") {
-        throw new Error("no-decompress");
-      }
-      // Apple NSData zlib is raw zlib (RFC 1950) with header; browsers want 'deflate' which is zlib-wrapped.
-      const ds = new DecompressionStream("deflate");
+    async function inflateOnce(bytes, format) {
+      const ds = new DecompressionStream(format);
       const stream = new Blob([bytes]).stream().pipeThrough(ds);
       const ab = await new Response(stream).arrayBuffer();
       return new TextDecoder().decode(ab);
+    }
+
+    async function inflatePayload(bytes) {
+      if (typeof DecompressionStream === "undefined") {
+        throw new Error("no-decompress");
+      }
+      // Prefer deflate-raw first — matches iOS Apple Compression COMPRESSION_ZLIB.
+      const formats = ["deflate-raw", "deflate", "gzip"];
+      let lastErr;
+      for (const fmt of formats) {
+        try {
+          return await inflateOnce(bytes, fmt);
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error("inflate-failed");
     }
 
     async function decodePayload(token) {
       const bytes = base64UrlToBytes(token);
       let text;
       try {
-        text = await inflateZlib(bytes);
+        text = await inflatePayload(bytes);
       } catch (_) {
+        // Uncompressed JSON fallback (debug / older drafts).
         text = new TextDecoder().decode(bytes);
       }
       return JSON.parse(text);
