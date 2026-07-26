@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PullEV</title>
   <script>
-    // GitHub Pages: unknown paths (e.g. /pullev-support/p/<payload>) serve this 404.html.
-    // Rewrite pool deep links to /p/?d=<payload> so the preview page can decode them.
+    // Fallback for hosts without path rewrites (e.g. GitHub Pages).
+    // Vercel serves /p/<payload> via vercel.json → /p/index.html.
+    // Unknown /p/<payload> paths rewrite to /p/?d=<payload> for the preview page.
     (function () {
       var parts = location.pathname.split("/").filter(Boolean);
       var pIdx = parts.findIndex(function (x) { return x.toLowerCase() === "p"; });

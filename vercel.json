@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/p/:payload", "destination": "/p/index.html" }
+  ]
+}
