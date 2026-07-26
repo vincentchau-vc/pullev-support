@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,18 +11,20 @@
     Client JS cannot set per-pool og:image for those previews. This page ships a default
     PullEV brand OG image. True per-pool card thumbnails in share previews need SSR or
     an edge function later (decode payload server-side → emit og:image).
+    Static OG defaults are English (crawler-safe); client UI follows browser language.
   -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="PullEV" />
+  <meta property="og:locale" content="en_US" />
   <meta property="og:title" content="PullEV · Shared Pool" />
-  <meta property="og:description" content="分享嘅盲抽池 — 喺 PullEV App 開啟即可還原。" />
+  <meta property="og:description" content="Shared blind pool — open in the PullEV app to restore." />
   <meta property="og:image" content="https://pullev-support.vercel.app/og-share.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="PullEV shared blind pool" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="PullEV · Shared Pool" />
-  <meta name="twitter:description" content="分享嘅盲抽池 — 喺 PullEV App 開啟即可還原。" />
+  <meta name="twitter:description" content="Shared blind pool — open in the PullEV app to restore." />
   <meta name="twitter:image" content="https://pullev-support.vercel.app/og-share.jpg" />
   <style>
     :root {
@@ -37,7 +39,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "PingFang SC", "Hiragino Sans", sans-serif;
       background: radial-gradient(1200px 600px at 20% -10%, #243044 0%, var(--bg) 55%);
       color: var(--text);
       line-height: 1.5;
@@ -93,19 +95,193 @@
 <body>
   <main>
     <h1>PullEV</h1>
-    <p class="sub" id="subtitle">分享嘅盲抽池</p>
+    <p class="sub" id="subtitle">Shared blind pool</p>
     <div class="card" id="content">
-      <p class="label">解碼緊…</p>
+      <p class="label" id="loadingLabel">Decoding…</p>
     </div>
-    <a class="cta" id="openApp" href="#" hidden>喺 PullEV 開啟</a>
+    <a class="cta" id="openApp" href="#" hidden>Open in PullEV</a>
     <p class="hint" id="hint"></p>
-    <p class="hint"><a class="secondary" href="../">支援主頁</a></p>
+    <p class="hint"><a class="secondary" id="supportLink" href="../">Support home</a></p>
   </main>
   <script>
     // Mirror of iOS PoolShareCodec: base64url(COMPRESSION_ZLIB(JSON)).
     // Apple Compression.COMPRESSION_ZLIB emits raw DEFLATE (RFC 1951), NOT zlib-wrapped (RFC 1950).
     // Browser mapping: "deflate-raw" = RFC 1951, "deflate" = RFC 1950. Try both + uncompressed JSON.
     // Prize art field: optional `i` (https image URL from TCGdex / SNKRDUNK).
+    // Locales mirror iOS AppLanguage: zh-Hant | zh-Hans | en | ja (AppPreferences share strings).
+
+    const LOCALES = ["zh-Hant", "zh-Hans", "en", "ja"];
+    const OG_LOCALE = {
+      "zh-Hant": "zh_HK",
+      "zh-Hans": "zh_CN",
+      en: "en_US",
+      ja: "ja_JP",
+    };
+
+    const STRINGS = {
+      "zh-Hant": {
+        pageTitle: "PullEV · 分享盲池",
+        sharedPoolTitle: "PullEV · 分享盲池",
+        subtitle: "分享嘅盲抽池",
+        loading: "解碼緊…",
+        remainingPacks: "剩餘包數",
+        pricePerPull: "每抽（HKD）",
+        fillerFloor: "墊卡保底（HKD）",
+        prizes: "大獎",
+        lastPrize: "尾賞",
+        openInApp: "喺 PullEV 開啟",
+        hint: "未安裝 App？App Store 搜尋 PullEV。Universal Links（Associated Domains）稍後再加。",
+        supportHome: "支援主頁",
+        missingToken: "搵唔到池資料。請用 App 內「分享盲池」產生嘅連結。",
+        // Aligns with AppPreferences.sharePoolCorrupt + web decompress fallback.
+        decodeError: "連結損壞或格式唔正確（或瀏覽器唔支援解壓）。請直接用 PullEV App 開啟。",
+        ogDescription: "分享嘅盲抽池 — 喺 PullEV App 開啟即可還原。",
+        metaDesc: (n, c, p) => `剩餘 ${n} 包 · 每抽 HK$${c} · ${p} 大獎`,
+        artAria: "大獎卡圖",
+      },
+      "zh-Hans": {
+        pageTitle: "PullEV · 分享盲池",
+        sharedPoolTitle: "PullEV · 分享盲池",
+        subtitle: "分享的盲抽池",
+        loading: "解码中…",
+        remainingPacks: "剩余包数",
+        pricePerPull: "每抽（HKD）",
+        fillerFloor: "垫卡保底（HKD）",
+        prizes: "大奖",
+        lastPrize: "尾赏",
+        openInApp: "在 PullEV 中打开",
+        hint: "未安装 App？请在 App Store 搜索 PullEV。Universal Links（Associated Domains）稍后添加。",
+        supportHome: "支持主页",
+        missingToken: "找不到池数据。请使用 App 内「分享盲池」生成的链接。",
+        decodeError: "链接损坏或格式不正确（或浏览器不支持解压）。请直接用 PullEV App 打开。",
+        ogDescription: "分享的盲抽池 — 在 PullEV App 中打开即可还原。",
+        metaDesc: (n, c, p) => `剩余 ${n} 包 · 每抽 HK$${c} · ${p} 大奖`,
+        artAria: "大奖卡图",
+      },
+      en: {
+        pageTitle: "PullEV · Shared Pool",
+        sharedPoolTitle: "PullEV · Shared Pool",
+        subtitle: "Shared blind pool",
+        loading: "Decoding…",
+        remainingPacks: "Packs remaining",
+        pricePerPull: "Price / pull (HKD)",
+        fillerFloor: "Filler floor (HKD)",
+        prizes: "Prizes",
+        lastPrize: "Last prize",
+        openInApp: "Open in PullEV",
+        hint: "Don’t have the app? Search PullEV on the App Store. Universal Links coming later.",
+        supportHome: "Support home",
+        missingToken: "No pool data found. Use a link from Share Pool in the app.",
+        decodeError: "This link is damaged or invalid (or your browser can’t decompress it). Open it in the PullEV app.",
+        ogDescription: "Shared blind pool — open in the PullEV app to restore.",
+        metaDesc: (n, c, p) => `${n} packs left · HK$${c} / pull · ${p} prizes`,
+        artAria: "Prize card art",
+      },
+      ja: {
+        pageTitle: "PullEV · 共有プール",
+        sharedPoolTitle: "PullEV · 共有プール",
+        subtitle: "共有ブラインドプール",
+        loading: "読み込み中…",
+        remainingPacks: "残り口数",
+        pricePerPull: "1口あたり（HKD）",
+        fillerFloor: "端玉最低価格（HKD）",
+        prizes: "景品",
+        lastPrize: "ラスト賞",
+        openInApp: "PullEVで開く",
+        hint: "アプリ未インストール？App Storeで「PullEV」を検索。Universal Linksは後日対応予定。",
+        supportHome: "サポートトップ",
+        missingToken: "プールデータが見つかりません。アプリ内の「プールを共有」で生成したリンクを使ってください。",
+        decodeError: "リンクが破損しているか形式が正しくありません（またはブラウザが解凍非対応）。PullEVアプリで開いてください。",
+        ogDescription: "共有ブラインドプール — PullEVアプリで開くと同じプールを復元できます。",
+        metaDesc: (n, c, p) => `残り ${n} 口 · 1口 HK$${c} · 景品 ${p}`,
+        artAria: "景品カード画像",
+      },
+    };
+
+    function mapTagToLocale(tag) {
+      if (!tag || typeof tag !== "string") return null;
+      const raw = tag.trim();
+      if (!raw) return null;
+      // Exact AppLanguage / ?lang= values
+      if (LOCALES.includes(raw)) return raw;
+      const t = raw.replace(/_/g, "-").toLowerCase();
+      if (t === "zh-hant") return "zh-Hant";
+      if (t === "zh-hans") return "zh-Hans";
+      if (t === "en" || t.startsWith("en-")) return "en";
+      if (t === "ja" || t.startsWith("ja-")) return "ja";
+      if (t.startsWith("zh")) {
+        // zh-HK / zh-TW / zh-MO / *-Hant* → Traditional (Cantonese/Hant tone)
+        if (
+          t.includes("hant") ||
+          t.includes("-hk") ||
+          t.includes("-tw") ||
+          t.includes("-mo") ||
+          t.endsWith("hk") ||
+          t.endsWith("tw") ||
+          t.endsWith("mo")
+        ) {
+          return "zh-Hant";
+        }
+        // zh-CN / zh-SG / *-Hans* → Simplified
+        if (
+          t.includes("hans") ||
+          t.includes("-cn") ||
+          t.includes("-sg") ||
+          t.endsWith("cn") ||
+          t.endsWith("sg")
+        ) {
+          return "zh-Hans";
+        }
+        // Bare "zh" → Traditional (PullEV HK default tone)
+        return "zh-Hant";
+      }
+      return null;
+    }
+
+    function detectLocale() {
+      const params = new URLSearchParams(location.search);
+      const override = mapTagToLocale(params.get("lang"));
+      if (override) return override;
+
+      const candidates = [];
+      if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+      if (navigator.language) candidates.push(navigator.language);
+
+      for (const tag of candidates) {
+        const mapped = mapTagToLocale(tag);
+        if (mapped) return mapped;
+      }
+      return "en";
+    }
+
+    const locale = detectLocale();
+    const t = STRINGS[locale];
+
+    function applyChrome() {
+      document.documentElement.lang = locale;
+      document.title = t.pageTitle;
+      document.getElementById("subtitle").textContent = t.subtitle;
+      const loading = document.getElementById("loadingLabel");
+      if (loading) loading.textContent = t.loading;
+      document.getElementById("openApp").textContent = t.openInApp;
+      document.getElementById("supportLink").textContent = t.supportHome;
+
+      const ogLocale = document.querySelector('meta[property="og:locale"]');
+      if (ogLocale) ogLocale.setAttribute("content", OG_LOCALE[locale]);
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      const twTitle = document.querySelector('meta[name="twitter:title"]');
+      const twDesc = document.querySelector('meta[name="twitter:description"]');
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (ogTitle) ogTitle.setAttribute("content", t.sharedPoolTitle);
+      if (ogDesc) ogDesc.setAttribute("content", t.ogDescription);
+      if (twTitle) twTitle.setAttribute("content", t.sharedPoolTitle);
+      if (twDesc) twDesc.setAttribute("content", t.ogDescription);
+      if (metaDesc) metaDesc.setAttribute("content", t.ogDescription);
+    }
+
+    applyChrome();
+
     function base64UrlToBytes(token) {
       let b64 = token.replace(/-/g, "+").replace(/_/g, "/");
       const pad = b64.length % 4;
@@ -192,7 +368,7 @@
             `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />`
         )
         .join("");
-      return `<div class="art-strip" aria-label="Prize card art">${imgs}</div>`;
+      return `<div class="art-strip" aria-label="${esc(t.artAria)}">${imgs}</div>`;
     }
 
     function setDocumentMeta(payload) {
@@ -200,8 +376,8 @@
       const firstName = prizes[0] && prizes[0].n ? String(prizes[0].n) : null;
       const title = firstName
         ? `PullEV · ${firstName}${prizes.length > 1 ? ` +${prizes.length - 1}` : ""}`
-        : "PullEV · Shared Pool";
-      const desc = `剩餘 ${payload.n ?? "?"} 包 · 每抽 HK$${payload.c ?? "?"} · ${prizes.length} 大獎`;
+        : t.sharedPoolTitle;
+      const desc = t.metaDesc(payload.n ?? "?", payload.c ?? "?", prizes.length);
       document.title = title;
       // Helps browser tab / in-app browsers; crawlers already read static OG above.
       const ogTitle = document.querySelector('meta[property="og:title"]');
@@ -228,31 +404,30 @@
           const qty = p.q ?? 1;
           const rem = p.a != null ? p.a : qty;
           const price = p.u != null ? ` · HK$${esc(p.u)}` : "";
-          const lp = p.lp ? " · 尾賞" : "";
+          const lp = p.lp ? ` · ${esc(t.lastPrize)}` : "";
           return `<li>${esc(p.n || "?")} ×${esc(rem)}/${esc(qty)}${price}${lp}</li>`;
         })
         .join("");
       const more = prizes.length > 12 ? `<li>… +${prizes.length - 12}</li>` : "";
       document.getElementById("content").innerHTML = `
         ${artStripHtml(prizes)}
-        <div class="row"><span class="label">剩餘包數</span><span class="value">${esc(payload.n ?? "?")}</span></div>
-        <div class="row"><span class="label">每抽（HKD）</span><span class="value">${esc(payload.c ?? "?")}</span></div>
-        <div class="row"><span class="label">墊卡保底（HKD）</span><span class="value">${esc(floor)}</span></div>
-        <div class="row"><span class="label">大獎</span><span class="value">${prizes.length}</span></div>
+        <div class="row"><span class="label">${esc(t.remainingPacks)}</span><span class="value">${esc(payload.n ?? "?")}</span></div>
+        <div class="row"><span class="label">${esc(t.pricePerPull)}</span><span class="value">${esc(payload.c ?? "?")}</span></div>
+        <div class="row"><span class="label">${esc(t.fillerFloor)}</span><span class="value">${esc(floor)}</span></div>
+        <div class="row"><span class="label">${esc(t.prizes)}</span><span class="value">${prizes.length}</span></div>
         <ul>${list}${more}</ul>
       `;
       const open = document.getElementById("openApp");
       open.hidden = false;
       open.href = "pullev://pool/" + token;
-      document.getElementById("hint").textContent =
-        "未安裝 App？App Store 搜尋 PullEV。Universal Links（Associated Domains）稍後再加。";
+      document.getElementById("hint").textContent = t.hint;
     }
 
     (async function main() {
       const token = extractToken();
       const content = document.getElementById("content");
       if (!token) {
-        content.innerHTML = `<p class="err">搵唔到池資料。請用 App 內「分享盲池」產生嘅連結。</p>`;
+        content.innerHTML = `<p class="err">${esc(t.missingToken)}</p>`;
         return;
       }
       try {
@@ -260,7 +435,7 @@
         if (!payload || typeof payload.v !== "number") throw new Error("bad");
         render(payload, token);
       } catch (e) {
-        content.innerHTML = `<p class="err">無法解碼呢個分享連結（可能已損壞，或瀏覽器唔支援解壓）。請直接用 PullEV App 開啟。</p>`;
+        content.innerHTML = `<p class="err">${esc(t.decodeError)}</p>`;
         const open = document.getElementById("openApp");
         open.hidden = false;
         open.href = "pullev://pool/" + token;
