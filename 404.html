@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PullEV</title>
+  <script>
+    // GitHub Pages: unknown paths (e.g. /pullev-support/p/<payload>) serve this 404.html.
+    // Rewrite pool deep links to /p/?d=<payload> so the preview page can decode them.
+    (function () {
+      var parts = location.pathname.split("/").filter(Boolean);
+      var pIdx = parts.findIndex(function (x) { return x.toLowerCase() === "p"; });
+      if (pIdx >= 0 && parts[pIdx + 1] && parts[pIdx + 1].toLowerCase() !== "index.html") {
+        var token = parts[pIdx + 1];
+        var base = parts.slice(0, pIdx + 1).join("/");
+        location.replace("/" + base + "/?d=" + encodeURIComponent(token) + location.search.replace(/^\?/, "&"));
+        return;
+      }
+      // Non-pool 404 → home
+      var root = parts[0] === "pullev-support" ? "/pullev-support/" : "/";
+      location.replace(root);
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting…</p>
+</body>
+</html>

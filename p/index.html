@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PullEV · Shared Pool</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a222d;
+      --text: #f2f4f7;
+      --muted: #9aa4b2;
+      --gold: #e8c36a;
+      --link: #6cb6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #243044 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main { max-width: 28rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    h1 { font-size: 1.4rem; margin: 0 0 0.35rem; color: var(--gold); }
+    .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.25rem; }
+    .card {
+      background: color-mix(in srgb, var(--card) 92%, white 4%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    .row { display: flex; justify-content: space-between; gap: 1rem; margin: 0.35rem 0; }
+    .label { color: var(--muted); font-size: 0.85rem; }
+    .value { font-weight: 600; }
+    ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+    li { margin: 0.25rem 0; font-size: 0.95rem; }
+    .cta {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      background: linear-gradient(135deg, #f0d08a, #c9a24a);
+      color: #111;
+      font-weight: 700;
+      padding: 0.9rem 1rem;
+      border-radius: 14px;
+      margin-top: 0.5rem;
+    }
+    .err { color: #ff8e8e; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
+    a.secondary { color: var(--link); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>PullEV</h1>
+    <p class="sub" id="subtitle">分享嘅盲抽池</p>
+    <div class="card" id="content">
+      <p class="label">解碼緊…</p>
+    </div>
+    <a class="cta" id="openApp" href="#" hidden>喺 PullEV 開啟</a>
+    <p class="hint" id="hint"></p>
+    <p class="hint"><a class="secondary" href="../">支援主頁</a></p>
+  </main>
+  <script>
+    // Mirror of iOS PoolShareCodec: base64url(zlib(JSON)). zlib via DecompressionStream when available.
+    function base64UrlToBytes(token) {
+      let b64 = token.replace(/-/g, "+").replace(/_/g, "/");
+      const pad = b64.length % 4;
+      if (pad) b64 += "=".repeat(4 - pad);
+      const bin = atob(b64);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+
+    async function inflateZlib(bytes) {
+      if (typeof DecompressionStream === "undefined") {
+        throw new Error("no-decompress");
+      }
+      // Apple NSData zlib is raw zlib (RFC 1950) with header; browsers want 'deflate' which is zlib-wrapped.
+      const ds = new DecompressionStream("deflate");
+      const stream = new Blob([bytes]).stream().pipeThrough(ds);
+      const ab = await new Response(stream).arrayBuffer();
+      return new TextDecoder().decode(ab);
+    }
+
+    async function decodePayload(token) {
+      const bytes = base64UrlToBytes(token);
+      let text;
+      try {
+        text = await inflateZlib(bytes);
+      } catch (_) {
+        text = new TextDecoder().decode(bytes);
+      }
+      return JSON.parse(text);
+    }
+
+    function extractToken() {
+      const params = new URLSearchParams(location.search);
+      const q = params.get("d");
+      if (q) return q;
+      // /pullev-support/p/<token> or /p/<token>
+      const parts = location.pathname.split("/").filter(Boolean);
+      const pIdx = parts.findIndex((x) => x.toLowerCase() === "p");
+      if (pIdx >= 0 && parts[pIdx + 1] && parts[pIdx + 1].toLowerCase() !== "index.html") {
+        return decodeURIComponent(parts[pIdx + 1]);
+      }
+      if (location.hash && location.hash.length > 1) {
+        return decodeURIComponent(location.hash.replace(/^#\/?/, ""));
+      }
+      return null;
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function render(payload, token) {
+      const prizes = Array.isArray(payload.p) ? payload.p : [];
+      const floor = payload.f || "0";
+      const list = prizes
+        .slice(0, 12)
+        .map((p) => {
+          const qty = p.q ?? 1;
+          const rem = p.a != null ? p.a : qty;
+          const price = p.u != null ? ` · HK$${esc(p.u)}` : "";
+          const lp = p.lp ? " · 尾賞" : "";
+          return `<li>${esc(p.n || "?")} ×${esc(rem)}/${esc(qty)}${price}${lp}</li>`;
+        })
+        .join("");
+      const more = prizes.length > 12 ? `<li>… +${prizes.length - 12}</li>` : "";
+      document.getElementById("content").innerHTML = `
+        <div class="row"><span class="label">剩餘包數</span><span class="value">${esc(payload.n ?? "?")}</span></div>
+        <div class="row"><span class="label">每抽（HKD）</span><span class="value">${esc(payload.c ?? "?")}</span></div>
+        <div class="row"><span class="label">墊卡保底（HKD）</span><span class="value">${esc(floor)}</span></div>
+        <div class="row"><span class="label">大獎</span><span class="value">${prizes.length}</span></div>
+        <ul>${list}${more}</ul>
+      `;
+      const open = document.getElementById("openApp");
+      open.hidden = false;
+      open.href = "pullev://pool/" + token;
+      document.getElementById("hint").textContent =
+        "未安裝 App？App Store 搜尋 PullEV。Universal Links（Associated Domains）稍後再加。";
+    }
+
+    (async function main() {
+      const token = extractToken();
+      const content = document.getElementById("content");
+      if (!token) {
+        content.innerHTML = `<p class="err">搵唔到池資料。請用 App 內「分享盲池」產生嘅連結。</p>`;
+        return;
+      }
+      try {
+        const payload = await decodePayload(token);
+        if (!payload || typeof payload.v !== "number") throw new Error("bad");
+        render(payload, token);
+      } catch (e) {
+        content.innerHTML = `<p class="err">無法解碼呢個分享連結（可能已損壞，或瀏覽器唔支援解壓）。請直接用 PullEV App 開啟。</p>`;
+        const open = document.getElementById("openApp");
+        open.hidden = false;
+        open.href = "pullev://pool/" + token;
+      }
+    })();
+  </script>
+</body>
+</html>
