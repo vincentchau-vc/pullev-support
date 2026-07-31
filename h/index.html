@@ -291,7 +291,7 @@
         } else if (!lastData) {
           document.getElementById('subtitle').textContent = I18N.loading;
         } else {
-          document.getElementById('subtitle').textContent = '/' + lastData.publicSlug;
+          document.getElementById('subtitle').textContent = '/' + slug;
         }
       }
 
@@ -368,7 +368,7 @@
         lastData = data;
         errorMsg.hidden = true;
         document.getElementById('title').textContent = data.displayName || '—';
-        document.getElementById('subtitle').textContent = '/' + data.publicSlug;
+        document.getElementById('subtitle').textContent = '/' + slug;
         document.title = `${data.displayName || 'Host'} · PullEV`;
 
         const active = data.activePools || [];
