@@ -43,7 +43,10 @@
       background: rgba(255,255,255,0.04); border: 1px solid var(--line);
       font-weight: 600; font-size: 0.88rem;
     }
+    .store-section { margin-top: 1.25rem; text-align: center; }
+    .store-section h2 { margin-bottom: 0.65rem; }
   </style>
+  <link rel="stylesheet" href="/assets/store-badges.css" />
 </head>
 <body>
   <main>
@@ -62,6 +65,18 @@
         <a href="live/">現場池範例 /live/</a>
       </div>
     </div>
+    <section class="store-section" aria-label="Download PullEV">
+      <h2>下載 App</h2>
+      <div class="store-badges">
+        <a class="store-badge" href="https://apps.apple.com/app/id6791817935" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
+          <img src="/assets/badge-app-store.svg" width="120" height="40" alt="Download on the App Store" />
+        </a>
+        <span class="store-badge store-badge--soon" aria-label="Google Play — Coming soon">
+          <img src="/assets/badge-google-play.svg" width="135" height="40" alt="Get it on Google Play" />
+          <span class="store-soon">即將推出</span>
+        </span>
+      </div>
+    </section>
   </main>
 </body>
 </html>
