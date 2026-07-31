@@ -2,163 +2,996 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1419" />
   <title>PullEV Live</title>
   <style>
     :root {
-      --bg: #0e1116;
-      --card: #171b22;
+      --bg: #0f1419;
+      --card: #1a222d;
       --text: #f2f4f7;
-      --muted: #9aa3b2;
-      --gold: #d4a84b;
-      --line: #2a3140;
+      --muted: #9aa4b2;
+      --gold: #e8c36a;
+      --gold2: #f0d78c;
+      --link: #6cb6ff;
+      --ok: #5ee39a;
+      --danger: #ff7b72;
+      --line: rgba(255,255,255,0.08);
+      --radius: 14px;
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "SF Pro Text", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+      margin: 0; min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+      color: var(--text); line-height: 1.45;
       background:
-        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 168, 75, 0.18), transparent),
+        radial-gradient(1200px 600px at 20% -10%, #243044 0%, transparent 55%),
+        radial-gradient(900px 480px at 100% 0%, rgba(232,195,106,0.1) 0%, transparent 50%),
+        radial-gradient(700px 400px at 0% 100%, rgba(108,182,255,0.06) 0%, transparent 45%),
         var(--bg);
-      color: var(--text);
-      line-height: 1.5;
     }
-    main { max-width: 28rem; margin: 0 auto; padding: 1.5rem 1.1rem 3rem; }
-    .brand { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin: 0 0 0.35rem; }
-    h1 { font-size: 1.55rem; margin: 0 0 0.25rem; font-weight: 650; }
-    .sub { color: var(--muted); margin: 0 0 1.25rem; font-size: 0.95rem; }
-    .stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
-      margin-bottom: 1.25rem;
+    .wrap { max-width: 28rem; margin: 0 auto; padding: 1.25rem 1rem 2.5rem; }
+    .brand { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin: 0 0 0.35rem; }
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.85rem; }
+    .topbar h1 { font-size: 1.4rem; margin: 0 0 0.2rem; font-weight: 800; color: var(--gold); }
+    .topbar .sub { color: var(--muted); margin: 0; font-size: 0.85rem; }
+    .refresh-btn {
+      flex-shrink: 0; border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--card) 92%, white 4%);
+      color: var(--link); border-radius: 10px; padding: 0.45rem 0.7rem;
+      font-size: 0.78rem; font-weight: 700; cursor: pointer;
     }
-    .stat {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 0.9rem 1rem;
+    .refresh-btn:disabled { opacity: 0.5; cursor: wait; }
+    .top-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; flex-shrink: 0; }
+    .lang-select {
+      appearance: none; -webkit-appearance: none;
+      border: 1px solid var(--line); border-radius: 10px;
+      background: color-mix(in srgb, var(--card) 92%, white 4%);
+      color: var(--text); font-size: 0.72rem; font-weight: 700;
+      padding: 0.35rem 1.6rem 0.35rem 0.55rem;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 12px) calc(50% - 2px), calc(100% - 7px) calc(50% - 2px);
+      background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+      cursor: pointer; max-width: 7.5rem;
     }
-    .stat .label { color: var(--muted); font-size: 0.75rem; }
-    .stat .value { font-size: 1.55rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 0.15rem; }
-    .panel {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: 1rem;
+
+    .jackpot-banner {
+      position: relative; margin-bottom: 1rem;
+      padding: 1rem 0 0.85rem;
+      background:
+        radial-gradient(120% 80% at 50% -20%, rgba(232,195,106,0.16), transparent 55%),
+        color-mix(in srgb, var(--card) 88%, #000 12%);
+      border: 1px solid rgba(232,195,106,0.28);
+      border-radius: var(--radius);
+      box-shadow:
+        0 12px 40px rgba(0,0,0,0.35),
+        0 0 0 1px rgba(232,195,106,0.06) inset,
+        0 0 28px rgba(232,195,106,0.08);
+      overflow: hidden;
+      animation: bannerGlow 4.8s ease-in-out infinite;
     }
-    .panel h2 { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; font-weight: 600; }
-    ol { margin: 0; padding-left: 1.2rem; }
-    li { margin: 0.35rem 0; }
-    .meta { color: var(--muted); font-size: 0.8rem; }
-    .error { color: #f0a0a0; }
-    .ok { color: #8fd4a4; }
-    footer { color: var(--muted); font-size: 0.75rem; margin-top: 1.5rem; }
-    code { font-size: 0.8em; }
+    .jackpot-banner::before {
+      content: ""; position: absolute; inset: -40% -20%;
+      background: conic-gradient(from 180deg at 50% 50%,
+        transparent 0deg, rgba(232,195,106,0.07) 60deg, transparent 120deg,
+        transparent 180deg, rgba(240,215,140,0.05) 240deg, transparent 300deg);
+      animation: bannerAura 14s linear infinite;
+      pointer-events: none; z-index: 0;
+    }
+    .jackpot-banner > * { position: relative; z-index: 1; }
+    @keyframes bannerGlow {
+      0%, 100% { box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(232,195,106,0.06) inset, 0 0 22px rgba(232,195,106,0.06); }
+      50% { box-shadow: 0 14px 44px rgba(0,0,0,0.38), 0 0 0 1px rgba(232,195,106,0.12) inset, 0 0 36px rgba(232,195,106,0.14); }
+    }
+    @keyframes bannerAura { to { transform: rotate(360deg); } }
+    .banner-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1rem 0.65rem; position: relative; overflow: hidden;
+    }
+    .banner-head::before {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.07) 50%, transparent 60%);
+      animation: shimmer 4.2s ease-in-out infinite; pointer-events: none;
+    }
+    @keyframes shimmer { 0%,100%{transform:translateX(-140%)} 45%,55%{transform:translateX(140%)} }
+    .banner-title {
+      margin: 0; font-size: 1.05rem; font-weight: 900; letter-spacing: 0.04em; position: relative; z-index: 1;
+      background: linear-gradient(100deg, var(--gold) 0%, var(--gold2) 35%, #fff6d6 50%, var(--gold2) 65%, var(--gold) 100%);
+      background-size: 220% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: titleSheen 5.5s ease-in-out infinite;
+    }
+    @keyframes titleSheen {
+      0%, 100% { background-position: 100% 50%; }
+      50% { background-position: 0% 50%; }
+    }
+    .banner-meta {
+      font-size: 0.68rem; font-weight: 700; color: var(--gold);
+      padding: 0.22rem 0.55rem; border: 1px solid rgba(232,195,106,0.35);
+      border-radius: 999px; background: rgba(232,195,106,0.1);
+      position: relative; z-index: 1;
+      animation: metaPulse 2.8s ease-in-out infinite;
+    }
+    @keyframes metaPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(232,195,106,0); }
+      50% { box-shadow: 0 0 0 4px rgba(232,195,106,0.1); }
+    }
+    .banner-scroll {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      cursor: grab;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(232,195,106,0.45) transparent;
+      mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+    }
+    .banner-scroll.is-dragging { cursor: grabbing; user-select: none; }
+    .banner-scroll.is-marquee-paused .banner-card { animation-play-state: paused; }
+    .banner-scroll::-webkit-scrollbar { height: 4px; }
+    .banner-scroll::-webkit-scrollbar-thumb {
+      background: rgba(232,195,106,0.45); border-radius: 999px;
+    }
+    .banner-track {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 0.7rem;
+      width: max-content;
+      padding: 0.15rem 1rem 0.65rem;
+      box-sizing: border-box;
+    }
+    .banner-card {
+      flex: 0 0 108px;
+      width: 108px;
+      border-radius: 12px; background: rgba(0,0,0,0.32);
+      border: 1px solid rgba(232,195,106,0.28); overflow: hidden;
+      position: relative;
+      transform-origin: center bottom;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .banner-card.enter {
+      animation: cardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+      animation-delay: calc(var(--i, 0) * 0.07s);
+    }
+    .banner-card::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+      background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.14) 48%, transparent 62%);
+      transform: translateX(-120%);
+      animation: cardShine 6s ease-in-out infinite;
+      animation-delay: calc(1.2s + var(--i, 0) * 0.45s);
+    }
+    .banner-card:hover {
+      transform: translateY(-3px) scale(1.03);
+      border-color: rgba(232,195,106,0.55);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35), 0 0 18px rgba(232,195,106,0.18);
+    }
+    .banner-card.drawn { opacity: 0.45; filter: grayscale(0.3); }
+    .banner-card.drawn::after { display: none; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes cardShine {
+      0%, 70%, 100% { transform: translateX(-120%); }
+      78%, 88% { transform: translateX(120%); }
+    }
+    .banner-img {
+      position: relative; height: 132px;
+      background:
+        radial-gradient(80% 70% at 50% 30%, rgba(232,195,106,0.12), transparent 70%),
+        rgba(255,255,255,0.03);
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .banner-img img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      -webkit-user-drag: none; user-select: none; pointer-events: none;
+    }
+    .banner-img .ph { font-size: 1.6rem; color: var(--gold); opacity: 0.45; }
+    .banner-num, .banner-qty {
+      position: absolute; top: 5px; font-size: 0.62rem; font-weight: 800;
+      padding: 0.12rem 0.38rem; border-radius: 999px; z-index: 3;
+    }
+    .banner-num { left: 5px; background: rgba(0,0,0,0.75); color: var(--gold); }
+    .banner-qty { right: 5px; background: rgba(108,182,255,0.2); color: var(--link); }
+    .banner-body { padding: 0.42rem 0.48rem 0.52rem; }
+    .banner-name {
+      font-size: 0.66rem; font-weight: 700; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; min-height: 2.4em;
+    }
+    .banner-price { margin-top: 0.2rem; font-size: 0.76rem; font-weight: 900; color: var(--gold); }
+    .banner-price.missing { color: var(--muted); font-weight: 600; font-size: 0.65rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .jackpot-banner,
+      .jackpot-banner::before,
+      .banner-head::before,
+      .banner-title,
+      .banner-meta,
+      .banner-card,
+      .banner-card.enter,
+      .banner-card::after { animation: none !important; }
+      .banner-title { color: var(--gold2); background: none; -webkit-background-clip: unset; background-clip: unset; }
+      .banner-card:hover { transform: none; }
+    }
+
+    .card-panel {
+      background: color-mix(in srgb, var(--card) 92%, white 4%);
+      border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 0.85rem 0.9rem; margin-bottom: 0.85rem;
+    }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.85rem; }
+    .badges[hidden] { display: none !important; }
+    .badge {
+      font-size: 0.66rem; font-weight: 700; padding: 0.26rem 0.52rem;
+      border-radius: 999px; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+    }
+    .badge.live { color: var(--gold); border-color: rgba(232,195,106,0.28); }
+    .badge.done {
+      font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em;
+      padding: 0.38rem 0.75rem;
+      color: var(--ok); border-color: rgba(94,227,154,0.4);
+      background: rgba(94,227,154,0.12);
+    }
+    .badge.locked { color: var(--link); border-color: rgba(108,182,255,0.28); }
+    .status-banner {
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 0 1rem; padding: 0.65rem 1rem;
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .status-banner[hidden] { display: none !important; }
+    .status-banner .label {
+      margin: 0; font-size: 1.05rem; font-weight: 900; letter-spacing: 0.06em;
+    }
+    .status-banner.live {
+      border: 1px solid rgba(232,195,106,0.45);
+      background: linear-gradient(135deg, rgba(232,195,106,0.2), rgba(232,195,106,0.06));
+      color: var(--gold);
+    }
+    .status-banner.done {
+      border: 1px solid rgba(94,227,154,0.45);
+      background: linear-gradient(135deg, rgba(94,227,154,0.18), rgba(94,227,154,0.06));
+      color: var(--ok);
+    }
+    .status-banner.prep {
+      border: 1px solid rgba(108,182,255,0.4);
+      background: linear-gradient(135deg, rgba(108,182,255,0.16), rgba(108,182,255,0.05));
+      color: var(--link);
+    }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+    .stat { text-align: center; padding: 0.35rem 0.2rem; }
+    .stat .label { color: var(--muted); font-size: 0.6rem; }
+    .stat .value { font-size: 0.92rem; font-weight: 800; margin-top: 0.08rem; font-variant-numeric: tabular-nums; }
+    .stat .value.gold { color: var(--gold); }
+
+    .section { margin-bottom: 0.85rem; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.45rem; }
+    .section-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); }
+    .section-meta { font-size: 0.65rem; color: var(--muted); }
+    .draw-list {
+      display: flex; flex-direction: column; gap: 0.35rem;
+      max-height: 18rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-right: 0.15rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(232,195,106,0.4) transparent;
+    }
+    .draw-list::-webkit-scrollbar { width: 4px; }
+    .draw-list::-webkit-scrollbar-thumb {
+      background: rgba(232,195,106,0.4); border-radius: 999px;
+    }
+    .draw-row {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center;
+      padding: 0.45rem 0.55rem; border-radius: 10px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--line);
+    }
+    .draw-row.jackpot {
+      grid-template-columns: auto 40px 1fr auto;
+      background: rgba(232,195,106,0.07); border-color: rgba(232,195,106,0.2);
+    }
+    .draw-row .num { font-weight: 900; color: var(--gold); font-size: 0.95rem; min-width: 2.2rem; }
+    .thumb {
+      width: 40px; height: 54px; border-radius: 6px; overflow: hidden;
+      background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .draw-info .name { font-size: 0.78rem; font-weight: 700; line-height: 1.2; }
+    .draw-info .detail { font-size: 0.65rem; color: var(--muted); margin-top: 0.12rem; }
+    .draw-info .detail .jp { color: var(--gold); font-weight: 700; }
+    .draw-time { font-size: 0.65rem; color: var(--muted); text-align: right; white-space: nowrap; }
+    .empty { color: var(--muted); font-size: 0.82rem; padding: 0.35rem 0; }
+    .error-msg { color: var(--danger); font-size: 0.78rem; margin-top: 0.5rem; }
+    .site-foot { margin-top: 1.5rem; text-align: center; font-size: 0.65rem; color: var(--muted); }
+    .site-foot a { color: var(--link); }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
   </style>
 </head>
 <body>
-  <main>
-    <p class="brand">PullEV Host</p>
-    <h1 id="title">現場池</h1>
-    <p class="sub" id="subtitle">載入中…</p>
-
-    <div class="stats">
-      <div class="stat">
-        <div class="label">剩餘</div>
-        <div class="value" id="remaining">—</div>
+  <div class="wrap">
+    <p class="brand">PullEV Live</p>
+    <div class="topbar">
+      <div>
+        <h1 id="title">現場池</h1>
+        <p class="sub" id="subtitle">載入中…</p>
       </div>
-      <div class="stat">
-        <div class="label">已抽</div>
-        <div class="value" id="drawn">—</div>
+      <div class="top-actions">
+        <label class="visually-hidden" for="langSelect" data-i18n="language">語言</label>
+        <select id="langSelect" class="lang-select" aria-label="Language">
+          <option value="zh-Hant">繁體中文</option>
+          <option value="zh-Hans">简体中文</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+        <button type="button" class="refresh-btn" id="refreshBtn" data-i18n="refresh">重新整理</button>
       </div>
     </div>
 
-    <div class="panel" id="jackpotPanel" hidden>
-      <h2>剩餘大獎數</h2>
-      <div class="value" id="jackpots" style="font-size:1.4rem;font-weight:700;">—</div>
+    <div class="status-banner" id="statusBanner" hidden>
+      <p class="label" id="statusLabel"></p>
     </div>
 
-    <div class="panel">
-      <h2>抽獎記錄</h2>
-      <ol id="draws"></ol>
-      <p class="meta" id="drawsHint"></p>
+    <section class="jackpot-banner" id="jackpotBanner" hidden>
+      <div class="banner-head">
+        <h2 class="banner-title" data-i18n="bannerTitle">大獎賞</h2>
+        <span class="banner-meta" id="bannerMeta"></span>
+      </div>
+      <div class="banner-scroll" id="bannerScroll">
+        <div class="banner-track" id="bannerTrack"></div>
+      </div>
+    </section>
+
+    <div class="badges" id="badges"></div>
+
+    <div class="card-panel" id="stats" hidden>
+      <div class="stats">
+        <div class="stat">
+          <div class="label" data-i18n="remaining">剩餘</div>
+          <div class="value gold" id="remaining">—</div>
+        </div>
+        <div class="stat">
+          <div class="label" data-i18n="drawn">已抽</div>
+          <div class="value" id="drawn">—</div>
+        </div>
+        <div class="stat">
+          <div class="label" data-i18n="wins">大獎</div>
+          <div class="value gold" id="winCount">—</div>
+        </div>
+        <div class="stat">
+          <div class="label" data-i18n="price">每抽</div>
+          <div class="value" id="price">—</div>
+        </div>
+      </div>
     </div>
 
-    <p class="meta" id="status"></p>
-    <footer>
-      每 3 秒更新。API：<code id="apiLabel"></code>
-      · 可加 <code>?api=https://vcii.live/pullev</code>
-    </footer>
-  </main>
+    <section class="section card-panel">
+      <div class="section-head">
+        <div class="section-title" data-i18n="drawHistory">抽獎記錄</div>
+        <div class="section-meta" id="drawMeta"></div>
+      </div>
+      <div class="draw-list" id="drawList"></div>
+      <p class="empty" id="drawHint" hidden></p>
+    </section>
+
+    <p class="error-msg" id="errorMsg" hidden></p>
+    <footer class="site-foot"><a href="/">PullEV</a></footer>
+  </div>
   <script>
     (function () {
+      const LOCALES = ['zh-Hant', 'zh-Hans', 'en', 'ja'];
+      const LANG_KEY = 'pullevLiveLang';
+      const STRINGS = {
+        'zh-Hant': {
+          pageTitle: 'PullEV Live',
+          livePool: '現場池',
+          loading: '載入中…',
+          language: '語言',
+          bannerTitle: '大獎賞',
+          remaining: '剩餘',
+          drawn: '已抽',
+          wins: '大獎',
+          price: '每抽',
+          ev: '每抽期望值',
+          return: '番回率',
+          drawHistory: '抽獎記錄',
+          refresh: '重新整理',
+          blind: '暗池',
+          open: '明池',
+          noDraws: '尚未抽獎',
+          leftJackpots: '剩餘大獎',
+          jackpotTag: '大獎',
+          pricePending: '價格未設',
+          bannerCount: '%d 張',
+          missingPool: '缺少 pool ID（/live/<poolId>）',
+          completedHint: '全部號碼已抽完',
+          drawingHint: '抽獎進行中',
+          lockedHint: '已鎖定，隨時開始抽獎',
+          status: {
+            draft: '準備中',
+            locked: '進行中',
+            drawing: '進行中',
+            completed: '已完成',
+          },
+        },
+        'zh-Hans': {
+          pageTitle: 'PullEV Live',
+          livePool: '现场池',
+          loading: '加载中…',
+          language: '语言',
+          bannerTitle: '大奖赏',
+          remaining: '剩余',
+          drawn: '已抽',
+          wins: '大奖',
+          price: '每抽',
+          ev: '每抽期望值',
+          return: '回报率',
+          drawHistory: '抽奖记录',
+          refresh: '刷新',
+          blind: '暗池',
+          open: '明池',
+          noDraws: '尚未抽奖',
+          leftJackpots: '剩余大奖',
+          jackpotTag: '大奖',
+          pricePending: '价格未设',
+          bannerCount: '%d 张',
+          missingPool: '缺少 pool ID（/live/<poolId>）',
+          completedHint: '全部号码已抽完',
+          drawingHint: '抽奖进行中',
+          lockedHint: '已锁定，随时开始抽奖',
+          status: {
+            draft: '准备中',
+            locked: '进行中',
+            drawing: '进行中',
+            completed: '已完成',
+          },
+        },
+        en: {
+          pageTitle: 'PullEV Live',
+          livePool: 'Live Pool',
+          loading: 'Loading…',
+          language: 'Language',
+          bannerTitle: 'Jackpot lineup',
+          remaining: 'Left',
+          drawn: 'Drawn',
+          wins: 'Jackpots',
+          price: '/ pull',
+          ev: 'EV / pull',
+          return: 'Return',
+          drawHistory: 'Draw log',
+          refresh: 'Refresh',
+          blind: 'Blind',
+          open: 'Open',
+          noDraws: 'No draws yet',
+          leftJackpots: 'Jackpots left',
+          jackpotTag: 'Jackpot',
+          pricePending: 'Price N/A',
+          bannerCount: '%d jackpots',
+          missingPool: 'Missing pool ID (/live/<poolId>)',
+          completedHint: 'All numbers have been drawn',
+          drawingHint: 'Drawing in progress',
+          lockedHint: 'Locked — ready to draw',
+          status: {
+            draft: 'Preparing',
+            locked: 'Live',
+            drawing: 'Live',
+            completed: 'Done',
+          },
+        },
+        ja: {
+          pageTitle: 'PullEV Live',
+          livePool: 'ライブプール',
+          loading: '読み込み中…',
+          language: '言語',
+          bannerTitle: '大賞ラインナップ',
+          remaining: '残り',
+          drawn: '抽選済',
+          wins: '大賞',
+          price: '単価',
+          ev: '期待値/回',
+          return: '還元率',
+          drawHistory: '抽選記録',
+          refresh: '更新',
+          blind: '闇箱',
+          open: '公開',
+          noDraws: 'まだ抽選なし',
+          leftJackpots: '残り大賞',
+          jackpotTag: '大賞',
+          pricePending: '価格未設定',
+          bannerCount: '%d 枚',
+          missingPool: 'pool ID がありません（/live/<poolId>）',
+          completedHint: 'すべての番号を抽選済みです',
+          drawingHint: '抽選進行中',
+          lockedHint: 'ロック済み・抽選準備OK',
+          status: {
+            draft: '準備中',
+            locked: '進行中',
+            drawing: '進行中',
+            completed: '完了',
+          },
+        },
+      };
+
+      function mapTagToLocale(tag) {
+        if (!tag || typeof tag !== 'string') return null;
+        const raw = tag.trim();
+        if (!raw) return null;
+        if (LOCALES.includes(raw)) return raw;
+        const t = raw.replace(/_/g, '-').toLowerCase();
+        if (t === 'zh-hant') return 'zh-Hant';
+        if (t === 'zh-hans') return 'zh-Hans';
+        if (t === 'en' || t.startsWith('en-')) return 'en';
+        if (t === 'ja' || t.startsWith('ja-')) return 'ja';
+        if (t.startsWith('zh')) {
+          if (
+            t.includes('hant') || t.includes('-hk') || t.includes('-tw') || t.includes('-mo') ||
+            t.endsWith('hk') || t.endsWith('tw') || t.endsWith('mo')
+          ) return 'zh-Hant';
+          if (
+            t.includes('hans') || t.includes('-cn') || t.includes('-sg') ||
+            t.endsWith('cn') || t.endsWith('sg')
+          ) return 'zh-Hans';
+          return 'zh-Hant';
+        }
+        return null;
+      }
+
+      function detectLocale() {
+        const params = new URLSearchParams(location.search);
+        const fromUrl = mapTagToLocale(params.get('lang'));
+        if (fromUrl) return fromUrl;
+        const fromStore = mapTagToLocale(localStorage.getItem(LANG_KEY));
+        if (fromStore) return fromStore;
+        const candidates = [];
+        if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+        if (navigator.language) candidates.push(navigator.language);
+        for (const tag of candidates) {
+          const mapped = mapTagToLocale(tag);
+          if (mapped) return mapped;
+        }
+        return 'zh-Hant';
+      }
+
+      function setLocaleInUrl(locale) {
+        const url = new URL(location.href);
+        url.searchParams.set('lang', locale);
+        history.replaceState(null, '', url);
+      }
+
+      let locale = detectLocale();
+      let I18N = STRINGS[locale];
+      let lastData = null;
+      let bannerFingerprint = '';
+      let marqueeRaf = 0;
+      let marqueePaused = false;
+      let marqueeResumeTimer = 0;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
       const parts = location.pathname.split('/').filter(Boolean);
-      // /live/:id
       const poolId = parts[0] === 'live' ? parts[1] : null;
       const params = new URLSearchParams(location.search);
-      const API = (params.get('api') || localStorage.getItem('pullevHostApi') || 'https://vcii.live/pullev').replace(/\/$/, '');
-      document.getElementById('apiLabel').textContent = API;
+      const API = (params.get('api') || localStorage.getItem('pullevHostApi') || 'https://pullev.vcii.live').replace(/\/$/, '');
 
-      if (!poolId) {
-        document.getElementById('subtitle').textContent = '連結缺少池 ID（/live/<poolId>）';
-        document.getElementById('subtitle').className = 'sub error';
-        return;
-      }
+      localStorage.setItem(LANG_KEY, locale);
+      setLocaleInUrl(locale);
 
-      async function tick() {
-        try {
-          const res = await fetch(API + '/v1/public/pools/' + encodeURIComponent(poolId));
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const data = await res.json();
-          render(data);
-          document.getElementById('status').textContent = '已更新 · ' + new Date().toLocaleTimeString();
-          document.getElementById('status').className = 'meta ok';
-        } catch (err) {
-          document.getElementById('status').textContent = '無法連線：' + err.message;
-          document.getElementById('status').className = 'meta error';
-        }
-      }
+      const refreshBtn = document.getElementById('refreshBtn');
+      const errorMsg = document.getElementById('errorMsg');
+      const langSelect = document.getElementById('langSelect');
+      let loading = false;
 
-      function render(data) {
-        document.getElementById('title').textContent = data.title || '現場池';
-        document.getElementById('subtitle').textContent =
-          (data.visibility === 'blind' ? '暗池' : '明池') + ' · ' + data.status;
-        document.getElementById('remaining').textContent = data.remainingCount;
-        document.getElementById('drawn').textContent = data.drawnCount;
-
-        const jp = document.getElementById('jackpotPanel');
-        if (typeof data.remainingJackpotCount === 'number') {
-          jp.hidden = false;
-          document.getElementById('jackpots').textContent = data.remainingJackpotCount;
-        } else {
-          jp.hidden = true;
-        }
-
-        const ol = document.getElementById('draws');
-        ol.innerHTML = '';
-        const draws = (data.draws || []).slice().reverse();
-        if (!draws.length) {
-          document.getElementById('drawsHint').textContent = '尚未抽獎';
-        } else {
-          document.getElementById('drawsHint').textContent = '';
-          for (const d of draws) {
-            const li = document.createElement('li');
-            const when = d.drawnAt ? new Date(d.drawnAt).toLocaleTimeString() : '';
-            if (d.prizeName) {
-              li.textContent = '#' + d.slotNumber + ' · ' + d.prizeName + (when ? ' · ' + when : '');
-            } else {
-              li.textContent = '#' + d.slotNumber + '（細節待公開）' + (when ? ' · ' + when : '');
-            }
-            ol.appendChild(li);
+      function applyStaticI18n() {
+        document.documentElement.lang = locale;
+        document.title = I18N.pageTitle;
+        langSelect.value = locale;
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+          const key = el.getAttribute('data-i18n');
+          if (I18N[key]) el.textContent = I18N[key];
+        });
+        if (!poolId) {
+          document.getElementById('subtitle').textContent = I18N.missingPool;
+        } else if (!lastData) {
+          document.getElementById('subtitle').textContent = I18N.loading;
+          if (!document.getElementById('title').dataset.custom) {
+            document.getElementById('title').textContent = I18N.livePool;
           }
         }
       }
 
-      tick();
-      setInterval(tick, 3000);
+      function switchLocale(next) {
+        const mapped = mapTagToLocale(next);
+        if (!mapped || mapped === locale) return;
+        locale = mapped;
+        I18N = STRINGS[locale];
+        localStorage.setItem(LANG_KEY, locale);
+        setLocaleInUrl(locale);
+        applyStaticI18n();
+        if (lastData) render(lastData);
+      }
+
+      langSelect.addEventListener('change', () => switchLocale(langSelect.value));
+      applyStaticI18n();
+
+      if (!poolId) {
+        refreshBtn.hidden = true;
+        return;
+      }
+
+      function money(n) {
+        if (n == null || Number.isNaN(n)) return null;
+        return 'HK$' + Math.round(n).toLocaleString(locale);
+      }
+
+      function formatTime(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        return d.toLocaleString(locale, {
+          month: 'numeric', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+        });
+      }
+
+      function thumbEl(url, alt) {
+        const el = document.createElement('div');
+        el.className = 'thumb';
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url; img.alt = alt || ''; img.loading = 'lazy';
+          el.appendChild(img);
+        } else el.textContent = '★';
+        return el;
+      }
+
+      function expandBannerItems(items) {
+        const out = [];
+        for (const item of items) {
+          const copies = Math.max(1, item.totalCount || 1);
+          for (let i = 0; i < copies; i += 1) {
+            out.push({
+              prizeName: item.prizeName,
+              imageUrl: item.imageUrl,
+              unitPriceHkd: item.unitPriceHkd,
+              slotNumber: item.slotNumber,
+              drawn: item.drawn,
+            });
+          }
+        }
+        return out;
+      }
+
+      function bannerItems(data, blindActive) {
+        const catalog = data.jackpotCatalog || [];
+        const lineup = data.jackpotLineup || [];
+        const slots = (data.jackpotSlots || []).filter((s) => s.prizeName);
+        if (blindActive && lineup.length) return lineup;
+        if (slots.length) return slots;
+        return expandBannerItems(catalog);
+      }
+
+      function enableDragScroll(scroller) {
+        if (!scroller || scroller.dataset.dragScroll === '1') return;
+        scroller.dataset.dragScroll = '1';
+        let dragging = false;
+        let startX = 0;
+        let origin = 0;
+        let moved = false;
+
+        const pauseMarquee = () => {
+          marqueePaused = true;
+          scroller.classList.add('is-marquee-paused');
+          if (marqueeResumeTimer) clearTimeout(marqueeResumeTimer);
+          marqueeResumeTimer = setTimeout(() => {
+            marqueePaused = false;
+            scroller.classList.remove('is-marquee-paused');
+          }, 2200);
+        };
+
+        scroller.addEventListener('pointerdown', (e) => {
+          pauseMarquee();
+          if (e.pointerType === 'touch') return;
+          dragging = true;
+          moved = false;
+          startX = e.clientX;
+          origin = scroller.scrollLeft;
+          scroller.classList.add('is-dragging');
+          try { scroller.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+        scroller.addEventListener('pointermove', (e) => {
+          if (!dragging) return;
+          const dx = e.clientX - startX;
+          if (Math.abs(dx) > 3) moved = true;
+          scroller.scrollLeft = origin - dx;
+        });
+        function endDrag(e) {
+          if (!dragging) return;
+          dragging = false;
+          scroller.classList.remove('is-dragging');
+          try { scroller.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+        scroller.addEventListener('pointerup', endDrag);
+        scroller.addEventListener('pointercancel', endDrag);
+        scroller.addEventListener('wheel', pauseMarquee, { passive: true });
+        scroller.addEventListener('touchstart', pauseMarquee, { passive: true });
+        scroller.addEventListener('click', (e) => {
+          if (moved) {
+            e.preventDefault();
+            e.stopPropagation();
+            moved = false;
+          }
+        }, true);
+      }
+
+      function stopBannerMarquee() {
+        if (marqueeRaf) {
+          cancelAnimationFrame(marqueeRaf);
+          marqueeRaf = 0;
+        }
+      }
+
+      function startBannerMarquee(scroller) {
+        stopBannerMarquee();
+        if (reduceMotion) return;
+        const max = scroller.scrollWidth - scroller.clientWidth;
+        if (max <= 8) return;
+        let dir = 1;
+        let last = performance.now();
+        const tick = (now) => {
+          marqueeRaf = requestAnimationFrame(tick);
+          if (marqueePaused || document.hidden) {
+            last = now;
+            return;
+          }
+          const dt = Math.min(32, now - last);
+          last = now;
+          const speed = 0.028; // px per ms
+          let next = scroller.scrollLeft + dir * speed * dt;
+          if (next >= max) { next = max; dir = -1; }
+          else if (next <= 0) { next = 0; dir = 1; }
+          scroller.scrollLeft = next;
+        };
+        marqueeRaf = requestAnimationFrame(tick);
+      }
+
+      function renderBanner(items, blindActive) {
+        const banner = document.getElementById('jackpotBanner');
+        const track = document.getElementById('bannerTrack');
+        const scroll = document.getElementById('bannerScroll');
+        const cards = expandBannerItems(items);
+        if (!cards.length) {
+          stopBannerMarquee();
+          banner.hidden = true;
+          bannerFingerprint = '';
+          return;
+        }
+        const fp = cards.map((c) =>
+          [c.prizeName, c.imageUrl || '', c.unitPriceHkd ?? '', c.slotNumber ?? '', c.drawn ? 1 : 0].join('|')
+        ).join(';');
+        if (fp === bannerFingerprint && !banner.hidden && track.childElementCount) {
+          if (!marqueeRaf) startBannerMarquee(scroll);
+          return;
+        }
+        const shouldEnter = !reduceMotion;
+        bannerFingerprint = fp;
+
+        track.innerHTML = '';
+        banner.hidden = false;
+        document.getElementById('bannerMeta').textContent = I18N.bannerCount.replace('%d', cards.length);
+        enableDragScroll(scroll);
+
+        cards.forEach((item, i) => {
+          const card = document.createElement('article');
+          card.className = 'banner-card' + (item.drawn ? ' drawn' : '') + (shouldEnter ? ' enter' : '');
+          card.style.setProperty('--i', String(i));
+          const imgWrap = document.createElement('div');
+          imgWrap.className = 'banner-img';
+          if (item.imageUrl) {
+            const img = document.createElement('img');
+            img.src = item.imageUrl; img.alt = item.prizeName || ''; img.loading = 'lazy';
+            imgWrap.appendChild(img);
+          } else {
+            const ph = document.createElement('span');
+            ph.className = 'ph'; ph.textContent = '★';
+            imgWrap.appendChild(ph);
+          }
+          if (item.slotNumber != null && !blindActive) {
+            const num = document.createElement('span');
+            num.className = 'banner-num'; num.textContent = '#' + item.slotNumber;
+            imgWrap.appendChild(num);
+          }
+          card.appendChild(imgWrap);
+          const body = document.createElement('div');
+          body.className = 'banner-body';
+          const name = document.createElement('div');
+          name.className = 'banner-name';
+          name.textContent = item.prizeName || '—';
+          body.appendChild(name);
+          const price = document.createElement('div');
+          const p = money(item.unitPriceHkd);
+          price.className = 'banner-price' + (p ? '' : ' missing');
+          price.textContent = p || I18N.pricePending;
+          body.appendChild(price);
+          card.appendChild(body);
+          track.appendChild(card);
+        });
+
+        requestAnimationFrame(() => startBannerMarquee(scroll));
+      }
+
+      function renderDraws(draws, revealAll) {
+        const list = document.getElementById('drawList');
+        const hint = document.getElementById('drawHint');
+        list.innerHTML = '';
+        const rows = (draws || []).slice().reverse();
+        if (!rows.length) {
+          hint.hidden = false;
+          hint.textContent = I18N.noDraws;
+          document.getElementById('drawMeta').textContent = '';
+          return;
+        }
+        hint.hidden = true;
+        document.getElementById('drawMeta').textContent = rows.length + '';
+
+        for (const d of rows) {
+          const isJackpot = revealAll && d.prizeKind === 'jackpot';
+          const row = document.createElement('div');
+          row.className = 'draw-row' + (isJackpot ? ' jackpot' : '');
+
+          const num = document.createElement('div');
+          num.className = 'num';
+          num.textContent = '#' + d.slotNumber;
+          row.appendChild(num);
+
+          if (isJackpot) {
+            row.appendChild(thumbEl(d.imageUrl, d.prizeName));
+            const info = document.createElement('div');
+            info.className = 'draw-info';
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = d.prizeName || '—';
+            info.appendChild(name);
+            const detail = document.createElement('div');
+            detail.className = 'detail';
+            const p = money(d.unitPriceHkd);
+            detail.innerHTML = '<span class="jp">' + I18N.jackpotTag + '</span>' +
+              (p ? ' · ' + p : ' · ' + I18N.pricePending);
+            info.appendChild(detail);
+            row.appendChild(info);
+          } else if (revealAll && d.prizeName) {
+            const info = document.createElement('div');
+            info.className = 'draw-info';
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = d.prizeName;
+            info.appendChild(name);
+            const p = money(d.unitPriceHkd);
+            if (p) {
+              const detail = document.createElement('div');
+              detail.className = 'detail';
+              detail.textContent = p;
+              info.appendChild(detail);
+            }
+            row.appendChild(info);
+          } else {
+            const spacer = document.createElement('div');
+            row.appendChild(spacer);
+          }
+
+          const when = document.createElement('div');
+          when.className = 'draw-time';
+          when.textContent = formatTime(d.drawnAt);
+          row.appendChild(when);
+          list.appendChild(row);
+        }
+      }
+
+      function render(data) {
+        lastData = data;
+        errorMsg.hidden = true;
+        const revealAll =
+          data.visibility === 'open' || data.historyPublic || data.status === 'completed';
+        const blindActive = data.visibility === 'blind' && !revealAll;
+
+        const titleEl = document.getElementById('title');
+        if (data.title) {
+          titleEl.textContent = data.title;
+          titleEl.dataset.custom = '1';
+        } else {
+          titleEl.textContent = I18N.livePool;
+          delete titleEl.dataset.custom;
+        }
+        const vis = data.visibility === 'blind' ? I18N.blind : I18N.open;
+        const st = I18N.status[data.status] || data.status;
+        const isCompleted = data.status === 'completed';
+        document.getElementById('subtitle').textContent = vis;
+
+        const statusBanner = document.getElementById('statusBanner');
+        const statusLabel = document.getElementById('statusLabel');
+        statusBanner.className = 'status-banner';
+        if (data.status === 'drawing' || data.status === 'locked') {
+          statusBanner.hidden = false;
+          statusBanner.classList.add('live');
+          statusLabel.textContent = st;
+          document.title = st + ' · ' + (data.title || I18N.livePool);
+        } else if (data.status === 'completed') {
+          statusBanner.hidden = false;
+          statusBanner.classList.add('done');
+          statusLabel.textContent = st;
+          document.title = st + ' · ' + (data.title || I18N.livePool);
+        } else if (data.status === 'draft') {
+          statusBanner.hidden = false;
+          statusBanner.classList.add('prep');
+          statusLabel.textContent = st;
+          document.title = st + ' · ' + (data.title || I18N.livePool);
+        } else {
+          statusBanner.hidden = true;
+          document.title = I18N.pageTitle;
+        }
+
+        renderBanner(bannerItems(data, blindActive), blindActive);
+
+        const badges = document.getElementById('badges');
+        badges.innerHTML = '';
+        if (!isCompleted && typeof data.remainingJackpotCount === 'number') {
+          const b = document.createElement('span');
+          b.className = 'badge';
+          b.textContent = I18N.leftJackpots + ' ' + data.remainingJackpotCount;
+          badges.appendChild(b);
+        }
+        badges.hidden = badges.childElementCount === 0;
+
+        document.getElementById('stats').hidden = false;
+        document.getElementById('remaining').textContent = data.remainingCount ?? '—';
+        document.getElementById('drawn').textContent = data.drawnCount ?? '—';
+        document.getElementById('price').textContent = money(data.pricePerPullHkd) || '—';
+
+        const allDraws = data.draws || [];
+        const jackpotDraws = allDraws.filter((d) => d.prizeKind === 'jackpot');
+        const totalJackpots = (data.jackpotLineup && data.jackpotLineup.length)
+          || (data.jackpotSlots || []).filter((s) => s.prizeName).length
+          || (data.jackpotCatalog || []).reduce((n, c) => n + (c.totalCount || 0), 0);
+        // Blind: show pool composition (total jackpots), never remaining / wins-so-far.
+        document.getElementById('winCount').textContent = blindActive
+          ? (totalJackpots ? String(totalJackpots) : '—')
+          : String(jackpotDraws.length);
+
+        renderDraws(allDraws, revealAll);
+      }
+
+      async function load() {
+        if (loading) return;
+        loading = true;
+        refreshBtn.disabled = true;
+        errorMsg.hidden = true;
+        try {
+          const res = await fetch(API + '/v1/public/pools/' + encodeURIComponent(poolId));
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          render(await res.json());
+        } catch (err) {
+          errorMsg.hidden = false;
+          errorMsg.textContent = err.message;
+        } finally {
+          loading = false;
+          refreshBtn.disabled = false;
+        }
+      }
+
+      refreshBtn.addEventListener('click', load);
+      load();
     })();
   </script>
 </body>

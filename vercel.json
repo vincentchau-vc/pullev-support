@@ -1,6 +1,9 @@
 {
-  "rewrites": [
-    { "source": "/p/:payload", "destination": "/p/index.html" },
-    { "source": "/live/:id", "destination": "/live/index.html" }
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://pullev.vcii.live/:path*",
+      "permanent": true
+    }
   ]
 }

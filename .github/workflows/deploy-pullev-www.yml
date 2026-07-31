@@ -1,0 +1,54 @@
+# Deploy static support / spectator site to EC2 (/var/www/pullev → pullev.vcii.live).
+name: Deploy PullEV www
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'vercel.json'
+      - 'README.md'
+  workflow_dispatch:
+
+concurrency:
+  group: pullev-www
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        run: |
+          install -m 600 -d ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Rsync static files to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          rsync -az --delete \
+            --exclude .git \
+            --exclude vercel.json \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            ./ "${EC2_USER}@${EC2_HOST}:/home/ubuntu/pullev-www-staging/"
+
+      - name: Publish to /var/www/pullev
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${EC2_USER}@${EC2_HOST}" \
+            'sudo rsync -a --delete /home/ubuntu/pullev-www-staging/ /var/www/pullev/ && sudo chown -R www-data:www-data /var/www/pullev'
+
+      - name: Smoke test
+        run: |
+          curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/ | grep -q 200
+          curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/live/index.html | grep -q 200
+          curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/p/ | grep -q 200
+          echo "www ok"
