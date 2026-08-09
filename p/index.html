@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1419" />
+  <meta name="color-scheme" content="dark" />
   <title>PullEV · Shared Pool</title>
   <meta name="description" content="PullEV shared blind pool preview. Open in the PullEV app to restore the same pool." />
   <!--
@@ -37,13 +39,27 @@
       --stroke: rgba(255,255,255,0.12);
     }
     * { box-sizing: border-box; }
+    html {
+      background-color: var(--bg);
+      color-scheme: dark;
+    }
     body {
       margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "PingFang SC", "Hiragino Sans", sans-serif;
-      background: radial-gradient(1200px 600px at 20% -10%, #243044 0%, var(--bg) 55%);
+      /* Solid color first so overscroll / safe-area never flash browser white. */
+      background-color: var(--bg);
+      background-image: radial-gradient(1200px 600px at 20% -10%, #243044 0%, var(--bg) 55%);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
       color: var(--text);
       line-height: 1.5;
+      padding:
+        env(safe-area-inset-top, 0)
+        env(safe-area-inset-right, 0)
+        env(safe-area-inset-bottom, 0)
+        env(safe-area-inset-left, 0);
     }
     main { max-width: 28rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
     h1 { font-size: 1.4rem; margin: 0 0 0.35rem; color: var(--gold); }
