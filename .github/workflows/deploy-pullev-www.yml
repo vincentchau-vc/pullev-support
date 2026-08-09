@@ -51,4 +51,5 @@ jobs:
           curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/ | grep -q 200
           curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/live/index.html | grep -q 200
           curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/p/ | grep -q 200
+          curl -fsS -o /dev/null -w "%{http_code}\n" https://pullev.vcii.live/.well-known/apple-app-site-association | grep -q 200
           echo "www ok"
