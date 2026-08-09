@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["SV66B73AXL.com.vincentchau.PTCGPullEV"],
+        "components": [
+          { "/": "/p/*" },
+          { "/": "/p" }
+        ],
+        "paths": ["/p/*", "/p"]
+      }
+    ]
+  }
+}

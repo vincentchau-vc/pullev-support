@@ -18,14 +18,14 @@
   <meta property="og:locale" content="en_US" />
   <meta property="og:title" content="PullEV · Shared Pool" />
   <meta property="og:description" content="Shared blind pool — open in the PullEV app to restore." />
-  <meta property="og:image" content="https://pullev-support.vercel.app/og-share.jpg" />
+  <meta property="og:image" content="https://pullev.vcii.live/og-share.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="PullEV shared blind pool" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="PullEV · Shared Pool" />
   <meta name="twitter:description" content="Shared blind pool — open in the PullEV app to restore." />
-  <meta name="twitter:image" content="https://pullev-support.vercel.app/og-share.jpg" />
+  <meta name="twitter:image" content="https://pullev.vcii.live/og-share.jpg" />
   <style>
     :root {
       --bg: #0f1419;
@@ -34,6 +34,7 @@
       --muted: #9aa4b2;
       --gold: #e8c36a;
       --link: #6cb6ff;
+      --stroke: rgba(255,255,255,0.12);
     }
     * { box-sizing: border-box; }
     body {
@@ -49,7 +50,7 @@
     .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.25rem; }
     .card {
       background: color-mix(in srgb, var(--card) 92%, white 4%);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid var(--stroke);
       border-radius: 16px;
       padding: 1rem 1.1rem;
       margin-bottom: 1rem;
@@ -58,7 +59,27 @@
     .label { color: var(--muted); font-size: 0.85rem; }
     .value { font-weight: 600; }
     ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
-    li { margin: 0.25rem 0; font-size: 0.95rem; }
+    li { margin: 0.35rem 0; font-size: 0.95rem; }
+    .prize {
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      margin: 0.65rem 0;
+      padding: 0.55rem 0;
+      border-top: 1px solid var(--stroke);
+    }
+    .prize:first-of-type { border-top: 0; padding-top: 0.15rem; }
+    .prize img {
+      width: 56px;
+      height: 78px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #10161f;
+      flex: 0 0 auto;
+    }
+    .prize .meta { min-width: 0; flex: 1; }
+    .prize .name { font-weight: 600; font-size: 0.95rem; }
+    .prize .subline { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
     .art-strip {
       display: flex;
       gap: 0.55rem;
@@ -76,6 +97,7 @@
       flex: 0 0 auto;
       box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     }
+    .actions { display: grid; gap: 0.65rem; margin-top: 0.35rem; }
     .cta {
       display: block;
       text-align: center;
@@ -85,11 +107,16 @@
       font-weight: 700;
       padding: 0.9rem 1rem;
       border-radius: 14px;
-      margin-top: 0.5rem;
+    }
+    .cta.secondary {
+      background: transparent;
+      color: var(--link);
+      border: 1px solid var(--stroke);
+      font-weight: 600;
     }
     .err { color: #ff8e8e; }
     .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
-    a.secondary { color: var(--link); }
+    a.secondary-link { color: var(--link); }
   </style>
 </head>
 <body>
@@ -99,16 +126,18 @@
     <div class="card" id="content">
       <p class="label" id="loadingLabel">Decoding…</p>
     </div>
-    <a class="cta" id="openApp" href="#" hidden>Open in PullEV</a>
+    <div class="actions" id="actions" hidden>
+      <a class="cta" id="openApp" href="#">Open in PullEV</a>
+      <a class="cta secondary" id="appStore" href="https://apps.apple.com/app/id6791817935" target="_blank" rel="noopener noreferrer">App Store</a>
+    </div>
     <p class="hint" id="hint"></p>
-    <p class="hint"><a class="secondary" id="supportLink" href="../">Support home</a></p>
+    <p class="hint"><a class="secondary-link" id="supportLink" href="../">Support home</a></p>
   </main>
   <script>
-    // Mirror of iOS PoolShareCodec: base64url(COMPRESSION_ZLIB(JSON)).
-    // Apple Compression.COMPRESSION_ZLIB emits raw DEFLATE (RFC 1951), NOT zlib-wrapped (RFC 1950).
-    // Browser mapping: "deflate-raw" = RFC 1951, "deflate" = RFC 1950. Try both + uncompressed JSON.
-    // Prize art field: optional `i` (https image URL from TCGdex / SNKRDUNK).
-    // Locales mirror iOS AppLanguage: zh-Hant | zh-Hans | en | ja (AppPreferences share strings).
+    // Mirror of iOS PoolShareCodec:
+    // - Short id `/p/<id>` → GET /v1/public/shares/:id (JSON payload on server)
+    // - Legacy embed `?d=` / long path → base64url(raw DEFLATE JSON)
+    // Apple Compression.COMPRESSION_ZLIB emits raw DEFLATE (RFC 1951).
 
     const LOCALES = ["zh-Hant", "zh-Hans", "en", "ja"];
     const OG_LOCALE = {
@@ -117,65 +146,75 @@
       en: "en_US",
       ja: "ja_JP",
     };
+    const SHORT_ID = /^[A-Za-z0-9]{6,16}$/;
+    const APP_STORE_URL = "https://apps.apple.com/app/id6791817935";
 
     const STRINGS = {
       "zh-Hant": {
         pageTitle: "PullEV · 分享盲池",
         sharedPoolTitle: "PullEV · 分享盲池",
         subtitle: "分享嘅盲抽池",
-        loading: "解碼緊…",
+        loading: "載入緊…",
         remainingPacks: "剩餘包數",
         pricePerPull: "每抽（HKD）",
         fillerFloor: "墊卡保底（HKD）",
         prizes: "大獎",
         lastPrize: "尾賞",
         openInApp: "喺 PullEV 開啟",
-        hint: "未安裝 App？點開後會帶你去 App Store。亦可自行搜尋「PullEV」。",
+        appStore: "未安裝？去 App Store",
+        hint: "已安裝 App 會直接開啟；未安裝請撳下面 App Store。Universal Links 需用最新版 PullEV。",
         supportHome: "支援主頁",
         missingToken: "搵唔到池資料。請用 App 內「分享盲池」產生嘅連結。",
-        // Aligns with AppPreferences.sharePoolCorrupt + web decompress fallback.
-        decodeError: "連結損壞或格式唔正確（或瀏覽器唔支援解壓）。請直接用 PullEV App 開啟。",
+        decodeError: "連結損壞或格式唔正確。請直接用 PullEV App 開啟。",
+        notFound: "搵唔到呢個分享（可能已過期）。請叫對方重新分享。",
         ogDescription: "分享嘅盲抽池 — 喺 PullEV App 開啟即可還原。",
         metaDesc: (n, c, p) => `剩餘 ${n} 包 · 每抽 HK$${c} · ${p} 大獎`,
         artAria: "大獎卡圖",
+        grade: "鑑定",
       },
       "zh-Hans": {
         pageTitle: "PullEV · 分享盲池",
         sharedPoolTitle: "PullEV · 分享盲池",
         subtitle: "分享的盲抽池",
-        loading: "解码中…",
+        loading: "加载中…",
         remainingPacks: "剩余包数",
         pricePerPull: "每抽（HKD）",
         fillerFloor: "垫卡保底（HKD）",
         prizes: "大奖",
         lastPrize: "尾赏",
         openInApp: "在 PullEV 中打开",
-        hint: "未安装 App？点开后会跳转到 App Store。也可自行搜索「PullEV」。",
+        appStore: "未安装？去 App Store",
+        hint: "已安装 App 会直接打开；未安装请点下面 App Store。Universal Links 需使用最新版 PullEV。",
         supportHome: "支持主页",
         missingToken: "找不到池数据。请使用 App 内「分享盲池」生成的链接。",
-        decodeError: "链接损坏或格式不正确（或浏览器不支持解压）。请直接用 PullEV App 打开。",
+        decodeError: "链接损坏或格式不正确。请直接用 PullEV App 打开。",
+        notFound: "找不到此分享（可能已过期）。请让对方重新分享。",
         ogDescription: "分享的盲抽池 — 在 PullEV App 中打开即可还原。",
         metaDesc: (n, c, p) => `剩余 ${n} 包 · 每抽 HK$${c} · ${p} 大奖`,
         artAria: "大奖卡图",
+        grade: "鉴定",
       },
       en: {
         pageTitle: "PullEV · Shared Pool",
         sharedPoolTitle: "PullEV · Shared Pool",
         subtitle: "Shared blind pool",
-        loading: "Decoding…",
+        loading: "Loading…",
         remainingPacks: "Packs remaining",
         pricePerPull: "Price / pull (HKD)",
         fillerFloor: "Filler floor (HKD)",
         prizes: "Prizes",
         lastPrize: "Last prize",
         openInApp: "Open in PullEV",
-        hint: "Don’t have the app? Tapping Open will take you to the App Store. You can also search for “PullEV”.",
+        appStore: "Get it on the App Store",
+        hint: "If PullEV is installed, Open goes to the app. Otherwise use App Store. Universal Links need the latest PullEV build.",
         supportHome: "Support home",
         missingToken: "No pool data found. Use a link from Share Pool in the app.",
-        decodeError: "This link is damaged or invalid (or your browser can’t decompress it). Open it in the PullEV app.",
+        decodeError: "This link is damaged or invalid. Open it in the PullEV app.",
+        notFound: "This share was not found (it may have expired). Ask for a new link.",
         ogDescription: "Shared blind pool — open in the PullEV app to restore.",
         metaDesc: (n, c, p) => `${n} packs left · HK$${c} / pull · ${p} prizes`,
         artAria: "Prize card art",
+        grade: "Grade",
       },
       ja: {
         pageTitle: "PullEV · 共有プール",
@@ -188,13 +227,16 @@
         prizes: "景品",
         lastPrize: "ラスト賞",
         openInApp: "PullEVで開く",
-        hint: "アプリ未インストール？開くをタップするとApp Storeへ移動します。「PullEV」で検索してもOKです。",
+        appStore: "未インストール？App Storeへ",
+        hint: "アプリがある場合は開くをタップ。ない場合はApp Storeを使ってください。Universal Linksは最新版PullEVが必要です。",
         supportHome: "サポートトップ",
         missingToken: "プールデータが見つかりません。アプリ内の「プールを共有」で生成したリンクを使ってください。",
-        decodeError: "リンクが破損しているか形式が正しくありません（またはブラウザが解凍非対応）。PullEVアプリで開いてください。",
+        decodeError: "リンクが破損しているか形式が正しくありません。PullEVアプリで開いてください。",
+        notFound: "この共有が見つかりません（期限切れの可能性）。新しいリンクを送ってもらってください。",
         ogDescription: "共有ブラインドプール — PullEVアプリで開くと同じプールを復元できます。",
         metaDesc: (n, c, p) => `残り ${n} 口 · 1口 HK$${c} · 景品 ${p}`,
         artAria: "景品カード画像",
+        grade: "鑑定",
       },
     };
 
@@ -202,7 +244,6 @@
       if (!tag || typeof tag !== "string") return null;
       const raw = tag.trim();
       if (!raw) return null;
-      // Exact AppLanguage / ?lang= values
       if (LOCALES.includes(raw)) return raw;
       const t = raw.replace(/_/g, "-").toLowerCase();
       if (t === "zh-hant") return "zh-Hant";
@@ -210,7 +251,6 @@
       if (t === "en" || t.startsWith("en-")) return "en";
       if (t === "ja" || t.startsWith("ja-")) return "ja";
       if (t.startsWith("zh")) {
-        // zh-HK / zh-TW / zh-MO / *-Hant* → Traditional (Cantonese/Hant tone)
         if (
           t.includes("hant") ||
           t.includes("-hk") ||
@@ -222,7 +262,6 @@
         ) {
           return "zh-Hant";
         }
-        // zh-CN / zh-SG / *-Hans* → Simplified
         if (
           t.includes("hans") ||
           t.includes("-cn") ||
@@ -232,7 +271,6 @@
         ) {
           return "zh-Hans";
         }
-        // Bare "zh" → Traditional (PullEV HK default tone)
         return "zh-Hant";
       }
       return null;
@@ -242,11 +280,9 @@
       const params = new URLSearchParams(location.search);
       const override = mapTagToLocale(params.get("lang"));
       if (override) return override;
-
       const candidates = [];
       if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
       if (navigator.language) candidates.push(navigator.language);
-
       for (const tag of candidates) {
         const mapped = mapTagToLocale(tag);
         if (mapped) return mapped;
@@ -264,6 +300,7 @@
       const loading = document.getElementById("loadingLabel");
       if (loading) loading.textContent = t.loading;
       document.getElementById("openApp").textContent = t.openInApp;
+      document.getElementById("appStore").textContent = t.appStore;
       document.getElementById("supportLink").textContent = t.supportHome;
 
       const ogLocale = document.querySelector('meta[property="og:locale"]');
@@ -303,7 +340,6 @@
       if (typeof DecompressionStream === "undefined") {
         throw new Error("no-decompress");
       }
-      // Prefer deflate-raw first — matches iOS Apple Compression COMPRESSION_ZLIB.
       const formats = ["deflate-raw", "deflate", "gzip"];
       let lastErr;
       for (const fmt of formats) {
@@ -316,23 +352,49 @@
       throw lastErr || new Error("inflate-failed");
     }
 
-    async function decodePayload(token) {
+    async function decodeEmbeddedPayload(token) {
       const bytes = base64UrlToBytes(token);
       let text;
       try {
         text = await inflatePayload(bytes);
       } catch (_) {
-        // Uncompressed JSON fallback (debug / older drafts).
         text = new TextDecoder().decode(bytes);
       }
       return JSON.parse(text);
+    }
+
+    async function fetchShortShare(id) {
+      const res = await fetch(`/v1/public/shares/${encodeURIComponent(id)}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (res.status === 404) {
+        const err = new Error("not-found");
+        err.code = "not-found";
+        throw err;
+      }
+      if (!res.ok) throw new Error("fetch-failed");
+      const data = await res.json();
+      if (!data || !data.payload || typeof data.payload.v !== "number") {
+        throw new Error("bad-payload");
+      }
+      return data.payload;
+    }
+
+    function isShortShareID(token) {
+      return typeof token === "string" && SHORT_ID.test(token);
+    }
+
+    async function resolvePayload(token) {
+      if (isShortShareID(token)) {
+        return fetchShortShare(token);
+      }
+      return decodeEmbeddedPayload(token);
     }
 
     function extractToken() {
       const params = new URLSearchParams(location.search);
       const q = params.get("d");
       if (q) return q;
-      // /pullev-support/p/<token> or /p/<token>
       const parts = location.pathname.split("/").filter(Boolean);
       const pIdx = parts.findIndex((x) => x.toLowerCase() === "p");
       if (pIdx >= 0 && parts[pIdx + 1] && parts[pIdx + 1].toLowerCase() !== "index.html") {
@@ -371,6 +433,19 @@
       return `<div class="art-strip" aria-label="${esc(t.artAria)}">${imgs}</div>`;
     }
 
+    function gradeLabel(raw) {
+      const map = {
+        raw_nm: "Raw (NM)",
+        psa_8: "PSA 8",
+        psa_9: "PSA 9",
+        psa_10: "PSA 10",
+        bgs_9_5: "BGS 9.5",
+        bgs_10: "BGS 10",
+        cgc_10: "CGC 10",
+      };
+      return map[raw] || raw || "";
+    }
+
     function setDocumentMeta(payload) {
       const prizes = Array.isArray(payload.p) ? payload.p : [];
       const firstName = prizes[0] && prizes[0].n ? String(prizes[0].n) : null;
@@ -379,12 +454,10 @@
         : t.sharedPoolTitle;
       const desc = t.metaDesc(payload.n ?? "?", payload.c ?? "?", prizes.length);
       document.title = title;
-      // Helps browser tab / in-app browsers; crawlers already read static OG above.
       const ogTitle = document.querySelector('meta[property="og:title"]');
       const ogDesc = document.querySelector('meta[property="og:description"]');
       if (ogTitle) ogTitle.setAttribute("content", title);
       if (ogDesc) ogDesc.setAttribute("content", desc);
-      // Prefer first card art when present (for browsers that re-read meta after paint — not crawlers).
       const firstArt = prizes.map((p) => p && p.i).find(isHttpUrl);
       if (firstArt) {
         const ogImg = document.querySelector('meta[property="og:image"]');
@@ -394,38 +467,30 @@
       }
     }
 
-    const APP_STORE_URL = "https://apps.apple.com/app/id6791817935";
-
     function wireOpenInApp(token) {
+      const actions = document.getElementById("actions");
       const open = document.getElementById("openApp");
-      open.hidden = false;
-      open.href = "pullev://pool/" + token;
+      const store = document.getElementById("appStore");
+      actions.hidden = false;
+      store.href = APP_STORE_URL;
+
+      // Prefer same HTTPS URL for Universal Links (installed app). Custom scheme as fallback.
+      const httpsOpen = location.href.split("#")[0];
+      open.href = httpsOpen;
       open.onclick = (e) => {
-        // Custom scheme: if app is installed, iOS leaves the browser.
-        // If not, Safari stays on this page — after a short delay, fall back to App Store.
+        // Do NOT auto-bounce to App Store — that races when the app IS installed.
+        // Try custom scheme once; user can tap App Store explicitly if needed.
         e.preventDefault();
-        const scheme = open.href;
-        const started = Date.now();
-        const timer = setTimeout(() => {
-          // Still here → likely no app (or user cancelled the open prompt).
-          if (Date.now() - started < 2200) {
-            location.href = APP_STORE_URL;
-          }
-        }, 1200);
-        const cancel = () => {
-          clearTimeout(timer);
-          document.removeEventListener("visibilitychange", onHide);
-          window.removeEventListener("pagehide", onHide);
-          window.removeEventListener("blur", onHide);
-        };
-        const onHide = () => {
-          // App opened (or tab backgrounded) — don't bounce to App Store.
-          if (document.hidden || document.visibilityState === "hidden") cancel();
-        };
-        document.addEventListener("visibilitychange", onHide);
-        window.addEventListener("pagehide", onHide);
-        window.addEventListener("blur", onHide);
-        location.href = scheme;
+        const scheme = "pullev://pool/" + encodeURIComponent(token);
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = scheme;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+          iframe.remove();
+          // Also try top-level navigation as a second chance (some browsers block iframes).
+          location.href = scheme;
+        }, 50);
       };
       document.getElementById("hint").textContent = t.hint;
     }
@@ -435,23 +500,30 @@
       const floor = payload.f || "0";
       setDocumentMeta(payload);
       const list = prizes
-        .slice(0, 12)
+        .slice(0, 20)
         .map((p) => {
           const qty = p.q ?? 1;
           const rem = p.a != null ? p.a : qty;
-          const price = p.u != null ? ` · HK$${esc(p.u)}` : "";
+          const price = p.u != null ? `HK$${esc(String(p.u).replace(/(\.\d{2})\d+$/, "$1"))}` : "";
+          const grade = gradeLabel(p.g);
           const lp = p.lp ? ` · ${esc(t.lastPrize)}` : "";
-          return `<li>${esc(p.n || "?")} ×${esc(rem)}/${esc(qty)}${price}${lp}</li>`;
+          const thumb = isHttpUrl(p.i)
+            ? `<img src="${esc(p.i.trim())}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" />`
+            : `<img alt="" style="opacity:0.25" />`;
+          return `<div class="prize">${thumb}<div class="meta"><div class="name">${esc(p.n || "?")}</div><div class="subline">${esc(grade)} · ×${esc(rem)}/${esc(qty)}${price ? " · " + price : ""}${lp}</div></div></div>`;
         })
         .join("");
-      const more = prizes.length > 12 ? `<li>… +${prizes.length - 12}</li>` : "";
+      const more =
+        prizes.length > 20
+          ? `<p class="label">… +${prizes.length - 20}</p>`
+          : "";
       document.getElementById("content").innerHTML = `
         ${artStripHtml(prizes)}
         <div class="row"><span class="label">${esc(t.remainingPacks)}</span><span class="value">${esc(payload.n ?? "?")}</span></div>
         <div class="row"><span class="label">${esc(t.pricePerPull)}</span><span class="value">${esc(payload.c ?? "?")}</span></div>
         <div class="row"><span class="label">${esc(t.fillerFloor)}</span><span class="value">${esc(floor)}</span></div>
         <div class="row"><span class="label">${esc(t.prizes)}</span><span class="value">${prizes.length}</span></div>
-        <ul>${list}${more}</ul>
+        ${list}${more}
       `;
       wireOpenInApp(token);
     }
@@ -464,11 +536,12 @@
         return;
       }
       try {
-        const payload = await decodePayload(token);
+        const payload = await resolvePayload(token);
         if (!payload || typeof payload.v !== "number") throw new Error("bad");
         render(payload, token);
       } catch (e) {
-        content.innerHTML = `<p class="err">${esc(t.decodeError)}</p>`;
+        const msg = e && e.code === "not-found" ? t.notFound : t.decodeError;
+        content.innerHTML = `<p class="err">${esc(msg)}</p>`;
         wireOpenInApp(token);
       }
     })();
