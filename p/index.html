@@ -133,11 +133,59 @@
     .err { color: #ff8e8e; }
     .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
     a.secondary-link { color: var(--link); }
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .topbar h1 { margin: 0; }
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--card) 92%, white 4%);
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.35rem 1.6rem 0.35rem 0.55rem;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 12px) calc(50% - 2px), calc(100% - 7px) calc(50% - 2px);
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      max-width: 7.5rem;
+      flex-shrink: 0;
+    }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
   <main>
-    <h1>PullEV</h1>
+    <div class="topbar">
+      <h1>PullEV</h1>
+      <label class="visually-hidden" for="langSelect">語言</label>
+      <select id="langSelect" class="lang-select" aria-label="Language">
+        <option value="zh-Hant">繁體中文</option>
+        <option value="zh-Hans">简体中文</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+    </div>
     <p class="sub" id="subtitle">Shared blind pool</p>
     <div class="card" id="content">
       <p class="label" id="loadingLabel">Decoding…</p>
@@ -156,6 +204,8 @@
     // Apple Compression.COMPRESSION_ZLIB emits raw DEFLATE (RFC 1951).
 
     const LOCALES = ["zh-Hant", "zh-Hans", "en", "ja"];
+    // Shared with / and /live/ so language preference carries across pages.
+    const LANG_KEY = "pullevLiveLang";
     const OG_LOCALE = {
       "zh-Hant": "zh_HK",
       "zh-Hans": "zh_CN",
@@ -169,6 +219,7 @@
       "zh-Hant": {
         pageTitle: "PullEV · 分享盲池",
         sharedPoolTitle: "PullEV · 分享盲池",
+        language: "語言",
         subtitle: "分享嘅盲抽池",
         loading: "載入緊…",
         remainingPacks: "剩餘包數",
@@ -191,6 +242,7 @@
       "zh-Hans": {
         pageTitle: "PullEV · 分享盲池",
         sharedPoolTitle: "PullEV · 分享盲池",
+        language: "语言",
         subtitle: "分享的盲抽池",
         loading: "加载中…",
         remainingPacks: "剩余包数",
@@ -213,6 +265,7 @@
       en: {
         pageTitle: "PullEV · Shared Pool",
         sharedPoolTitle: "PullEV · Shared Pool",
+        language: "Language",
         subtitle: "Shared blind pool",
         loading: "Loading…",
         remainingPacks: "Packs remaining",
@@ -235,6 +288,7 @@
       ja: {
         pageTitle: "PullEV · 共有プール",
         sharedPoolTitle: "PullEV · 共有プール",
+        language: "言語",
         subtitle: "共有ブラインドプール",
         loading: "読み込み中…",
         remainingPacks: "残り口数",
@@ -296,6 +350,8 @@
       const params = new URLSearchParams(location.search);
       const override = mapTagToLocale(params.get("lang"));
       if (override) return override;
+      const fromStore = mapTagToLocale(localStorage.getItem(LANG_KEY));
+      if (fromStore) return fromStore;
       const candidates = [];
       if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
       if (navigator.language) candidates.push(navigator.language);
@@ -303,11 +359,21 @@
         const mapped = mapTagToLocale(tag);
         if (mapped) return mapped;
       }
-      return "en";
+      return "zh-Hant";
     }
 
-    const locale = detectLocale();
-    const t = STRINGS[locale];
+    function setLocaleInUrl(next) {
+      const url = new URL(location.href);
+      url.searchParams.set("lang", next);
+      history.replaceState(null, "", url);
+    }
+
+    let locale = detectLocale();
+    let t = STRINGS[locale];
+    const langSelect = document.getElementById("langSelect");
+    let cachedPayload = null;
+    let cachedToken = null;
+    let cachedError = null; // "missing" | "not-found" | "decode"
 
     function applyChrome() {
       document.documentElement.lang = locale;
@@ -318,6 +384,8 @@
       document.getElementById("openApp").textContent = t.openInApp;
       document.getElementById("appStore").textContent = t.appStore;
       document.getElementById("supportLink").textContent = t.supportHome;
+      langSelect.value = locale;
+      langSelect.setAttribute("aria-label", t.language);
 
       const ogLocale = document.querySelector('meta[property="og:locale"]');
       if (ogLocale) ogLocale.setAttribute("content", OG_LOCALE[locale]);
@@ -333,7 +401,42 @@
       if (metaDesc) metaDesc.setAttribute("content", t.ogDescription);
     }
 
+    function refreshView() {
+      applyChrome();
+      const content = document.getElementById("content");
+      if (cachedPayload && cachedToken) {
+        render(cachedPayload, cachedToken);
+        return;
+      }
+      if (cachedError === "missing") {
+        content.innerHTML = `<p class="err">${esc(t.missingToken)}</p>`;
+        return;
+      }
+      if (cachedError === "not-found") {
+        content.innerHTML = `<p class="err">${esc(t.notFound)}</p>`;
+        if (cachedToken) wireOpenInApp(cachedToken);
+        return;
+      }
+      if (cachedError === "decode") {
+        content.innerHTML = `<p class="err">${esc(t.decodeError)}</p>`;
+        if (cachedToken) wireOpenInApp(cachedToken);
+      }
+    }
+
+    function switchLocale(next) {
+      const mapped = mapTagToLocale(next);
+      if (!mapped || mapped === locale) return;
+      locale = mapped;
+      t = STRINGS[locale];
+      localStorage.setItem(LANG_KEY, locale);
+      setLocaleInUrl(locale);
+      refreshView();
+    }
+
+    localStorage.setItem(LANG_KEY, locale);
+    setLocaleInUrl(locale);
     applyChrome();
+    langSelect.addEventListener("change", () => switchLocale(langSelect.value));
 
     function base64UrlToBytes(token) {
       let b64 = token.replace(/-/g, "+").replace(/_/g, "/");
@@ -547,16 +650,22 @@
     (async function main() {
       const token = extractToken();
       const content = document.getElementById("content");
+      cachedToken = token;
       if (!token) {
+        cachedError = "missing";
         content.innerHTML = `<p class="err">${esc(t.missingToken)}</p>`;
         return;
       }
       try {
         const payload = await resolvePayload(token);
         if (!payload || typeof payload.v !== "number") throw new Error("bad");
+        cachedPayload = payload;
+        cachedError = null;
         render(payload, token);
       } catch (e) {
-        const msg = e && e.code === "not-found" ? t.notFound : t.decodeError;
+        cachedPayload = null;
+        cachedError = e && e.code === "not-found" ? "not-found" : "decode";
+        const msg = cachedError === "not-found" ? t.notFound : t.decodeError;
         content.innerHTML = `<p class="err">${esc(msg)}</p>`;
         wireOpenInApp(token);
       }
