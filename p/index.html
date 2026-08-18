@@ -193,6 +193,7 @@
     <div class="actions" id="actions" hidden>
       <a class="cta" id="openApp" href="#">Open in PullEV</a>
       <a class="cta secondary" id="appStore" href="https://apps.apple.com/app/id6791817935" target="_blank" rel="noopener noreferrer">App Store</a>
+      <a class="cta secondary" id="playStore" href="https://play.google.com/store/apps/details?id=com.vincentchau.pullev" target="_blank" rel="noopener noreferrer">Google Play</a>
     </div>
     <p class="hint" id="hint"></p>
     <p class="hint"><a class="secondary-link" id="supportLink" href="../">Support home</a></p>
@@ -214,6 +215,7 @@
     };
     const SHORT_ID = /^[A-Za-z0-9]{6,16}$/;
     const APP_STORE_URL = "https://apps.apple.com/app/id6791817935";
+    const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.vincentchau.pullev";
 
     const STRINGS = {
       "zh-Hant": {
@@ -229,7 +231,8 @@
         lastPrize: "尾賞",
         openInApp: "喺 PullEV 開啟",
         appStore: "未安裝？去 App Store",
-        hint: "已安裝 App 會直接開啟；未安裝請撳下面 App Store。Universal Links 需用最新版 PullEV。",
+        playStore: "未安裝？去 Google Play",
+        hint: "已安裝 App 會直接開啟；未安裝請撳下面 App Store 或 Google Play。",
         supportHome: "支援主頁",
         missingToken: "搵唔到池資料。請用 App 內「分享盲池」產生嘅連結。",
         decodeError: "連結損壞或格式唔正確。請直接用 PullEV App 開啟。",
@@ -252,7 +255,8 @@
         lastPrize: "尾赏",
         openInApp: "在 PullEV 中打开",
         appStore: "未安装？去 App Store",
-        hint: "已安装 App 会直接打开；未安装请点下面 App Store。Universal Links 需使用最新版 PullEV。",
+        playStore: "未安装？去 Google Play",
+        hint: "已安装 App 会直接打开；未安装请点下面 App Store 或 Google Play。",
         supportHome: "支持主页",
         missingToken: "找不到池数据。请使用 App 内「分享盲池」生成的链接。",
         decodeError: "链接损坏或格式不正确。请直接用 PullEV App 打开。",
@@ -275,7 +279,8 @@
         lastPrize: "Last prize",
         openInApp: "Open in PullEV",
         appStore: "Get it on the App Store",
-        hint: "If PullEV is installed, Open goes to the app. Otherwise use App Store. Universal Links need the latest PullEV build.",
+        playStore: "Get it on Google Play",
+        hint: "If PullEV is installed, Open goes to the app. Otherwise use App Store or Google Play.",
         supportHome: "Support home",
         missingToken: "No pool data found. Use a link from Share Pool in the app.",
         decodeError: "This link is damaged or invalid. Open it in the PullEV app.",
@@ -298,7 +303,8 @@
         lastPrize: "ラスト賞",
         openInApp: "PullEVで開く",
         appStore: "未インストール？App Storeへ",
-        hint: "アプリがある場合は開くをタップ。ない場合はApp Storeを使ってください。Universal Linksは最新版PullEVが必要です。",
+        playStore: "未インストール？Google Playへ",
+        hint: "アプリがある場合は開くをタップ。ない場合はApp StoreまたはGoogle Playを使ってください。",
         supportHome: "サポートトップ",
         missingToken: "プールデータが見つかりません。アプリ内の「プールを共有」で生成したリンクを使ってください。",
         decodeError: "リンクが破損しているか形式が正しくありません。PullEVアプリで開いてください。",
@@ -383,6 +389,7 @@
       if (loading) loading.textContent = t.loading;
       document.getElementById("openApp").textContent = t.openInApp;
       document.getElementById("appStore").textContent = t.appStore;
+      document.getElementById("playStore").textContent = t.playStore;
       document.getElementById("supportLink").textContent = t.supportHome;
       langSelect.value = locale;
       langSelect.setAttribute("aria-label", t.language);
@@ -590,15 +597,17 @@
       const actions = document.getElementById("actions");
       const open = document.getElementById("openApp");
       const store = document.getElementById("appStore");
+      const play = document.getElementById("playStore");
       actions.hidden = false;
       store.href = APP_STORE_URL;
+      play.href = PLAY_STORE_URL;
 
       // Prefer same HTTPS URL for Universal Links (installed app). Custom scheme as fallback.
       const httpsOpen = location.href.split("#")[0];
       open.href = httpsOpen;
       open.onclick = (e) => {
         // Do NOT auto-bounce to App Store — that races when the app IS installed.
-        // Try custom scheme once; user can tap App Store explicitly if needed.
+        // Try custom scheme once; user can tap a store button explicitly if needed.
         e.preventDefault();
         const scheme = "pullev://pool/" + encodeURIComponent(token);
         const iframe = document.createElement("iframe");
